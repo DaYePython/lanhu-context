@@ -20,13 +20,25 @@
 
 ### Option 1: hand it to an AI agent (recommended)
 
-Paste the following paragraph into any AI client that supports this repo (Codex / Claude Code / Cursor / Hermes / Trae / Qoder, etc.) and let it handle both the CLI install and the skill setup:
+Pick a scope, then paste the whole paragraph into any AI client that supports this repo (Codex / Claude Code / Cursor / Hermes / Trae / Qoder, etc.) and let it handle both the CLI install and the skill setup.
+
+**Global install** (CLI available everywhere, skill goes into the user-level/global skills directory, shared by all projects):
 
 ```text
-Please install lanhu-context for me (do NOT clone any source repository):
+Please install lanhu-context globally for me (do NOT clone any source repository):
 1. npm i -g @lanhu-context/cli, then run `lanhu doctor` until it exits 0 (use `lanhu auth set` to configure LANHU_TOKEN if credentials fail);
-2. Run `npx skills add DaYePython/lanhu-context` to install the skill; if that doesn't apply to you, install the lanhu-context-cli skill in your own skill/rule/plugin format (e.g. Claude Code skills dir, Codex AGENTS.md, Cursor .cursor/rules);
+2. Run `npx skills add DaYePython/lanhu-context` and choose the global/user-level scope; if that doesn't apply to you, install the lanhu-context-cli skill into your own global skill/rule directory (e.g. Claude Code ~/.claude/skills, Codex ~/.codex/AGENTS.md);
 3. Report back the doctor result and where the skill was installed.
+```
+
+**Project-level install** (CLI as a devDependency of the current project, skill scoped to this project; the CLI is not on the global PATH, so every command needs a prefix):
+
+```text
+Please install lanhu-context inside the current project (do NOT clone any source repository, do NOT install globally):
+1. npm i -D @lanhu-context/cli; from then on run every lanhu command with a prefix: `npx lanhu <command>` (or wrap them in package.json scripts and invoke via npm run);
+2. Run `npx lanhu doctor` until it exits 0 (use `npx lanhu auth set` to configure LANHU_TOKEN, stored in the project .env.local — make sure it is gitignored);
+3. Run `npx skills add DaYePython/lanhu-context` and choose the project scope; if that doesn't apply to you, install the lanhu-context-cli skill into this project's skill/rule directory (e.g. .claude/skills, .cursor/rules) and note in the skill usage that commands need the `npx lanhu` prefix;
+4. Report back the doctor result and where the skill was installed.
 ```
 
 ### Option 2: manual install

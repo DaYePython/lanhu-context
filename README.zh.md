@@ -20,13 +20,25 @@
 
 ### 方式一：交给 AI Agent（推荐）
 
-把下面整段话交给任意支持本仓库的 AI 客户端（Codex / Claude Code / Cursor / Hermes / Trae / Qoder 等），由它自行完成 CLI 安装 + skill 接入：
+按安装范围二选一，把整段话交给任意支持本仓库的 AI 客户端（Codex / Claude Code / Cursor / Hermes / Trae / Qoder 等），由它自行完成 CLI 安装 + skill 接入。
+
+**全局安装**（CLI 命令全局可用，skill 装到用户级/全局技能目录，所有项目共享）：
 
 ```text
-请为我安装 lanhu-context：
+请为我全局安装 lanhu-context（不要 clone 任何源码仓库）：
 1. npm i -g @lanhu-context/cli，然后运行 lanhu doctor 直到退出码为 0（凭据问题用 lanhu auth set 配置 LANHU_TOKEN）；
-2. 运行 npx skills add DaYePython/lanhu-context 安装 skill；如果该方式不适用于你，就以你自己的技能/规则/插件形式安装 lanhu-context-cli skill（如 Claude Code 的 skills 目录、Codex 的 AGENTS.md、Cursor 的 .cursor/rules 等）；
+2. 运行 npx skills add DaYePython/lanhu-context 并选择全局/用户级安装 skill；如果该方式不适用于你，就把 lanhu-context-cli skill 装到你自己的全局技能/规则目录（如 Claude Code 的 ~/.claude/skills、Codex 的 ~/.codex/AGENTS.md 等）；
 3. 安装后向我汇报 doctor 结果和 skill 安装位置。
+```
+
+**项目级安装**（CLI 装为当前项目 devDependency，skill 只对本项目生效；CLI 不在全局 PATH，执行命令需带前缀）：
+
+```text
+请在当前项目内安装 lanhu-context（不要 clone 任何源码仓库，不要全局安装）：
+1. npm i -D @lanhu-context/cli；之后所有 lanhu 命令都要带前缀执行：npx lanhu <command>（或封装进 package.json scripts 后用 npm run 调用）；
+2. 运行 npx lanhu doctor 直到退出码为 0（凭据问题用 npx lanhu auth set 配置 LANHU_TOKEN，写入项目 .env.local 并确认已被 gitignore）；
+3. 运行 npx skills add DaYePython/lanhu-context 并选择项目级安装 skill；如果该方式不适用于你，就把 lanhu-context-cli skill 装到本项目的技能/规则目录（如 .claude/skills、.cursor/rules 等），并在 skill 用法中注明命令需用 npx lanhu 前缀；
+4. 安装后向我汇报 doctor 结果和 skill 安装位置。
 ```
 
 ### 方式二：手动安装
