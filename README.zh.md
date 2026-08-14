@@ -23,9 +23,9 @@
 把下面整段话交给任意支持本仓库的 AI 客户端（Codex / Claude Code / Cursor / Hermes / Trae / Qoder 等），由它自行完成 CLI 安装 + skill 接入：
 
 ```text
-请为我安装 lanhu-context（https://github.com/DaYePython/lanhu-context）：
+请为我安装 lanhu-context：
 1. npm i -g @lanhu-context/cli，然后运行 lanhu doctor 直到退出码为 0（凭据问题用 lanhu auth set 配置 LANHU_TOKEN）；
-2. 获取仓库中 skills/lanhu-context-cli 的 SKILL.md，以你自己的技能/规则/插件形式安装（如 Claude Code 的 skills 目录、Codex 的 AGENTS.md、Cursor 的 .cursor/rules 等）；
+2. 运行 npx skills add DaYePython/lanhu-context 安装 skill；如果该方式不适用于你，就以你自己的技能/规则/插件形式安装 lanhu-context-cli skill（如 Claude Code 的 skills 目录、Codex 的 AGENTS.md、Cursor 的 .cursor/rules 等）；
 3. 安装后向我汇报 doctor 结果和 skill 安装位置。
 ```
 

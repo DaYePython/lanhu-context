@@ -23,9 +23,9 @@
 Paste the following paragraph into any AI client that supports this repo (Codex / Claude Code / Cursor / Hermes / Trae / Qoder, etc.) and let it handle both the CLI install and the skill setup:
 
 ```text
-Please install lanhu-context (https://github.com/DaYePython/lanhu-context) for me:
+Please install lanhu-context for me (do NOT clone any source repository):
 1. npm i -g @lanhu-context/cli, then run `lanhu doctor` until it exits 0 (use `lanhu auth set` to configure LANHU_TOKEN if credentials fail);
-2. Fetch skills/lanhu-context-cli/SKILL.md from the repo and install it in your own skill/rule/plugin format (e.g. Claude Code skills dir, Codex AGENTS.md, Cursor .cursor/rules);
+2. Run `npx skills add DaYePython/lanhu-context` to install the skill; if that doesn't apply to you, install the lanhu-context-cli skill in your own skill/rule/plugin format (e.g. Claude Code skills dir, Codex AGENTS.md, Cursor .cursor/rules);
 3. Report back the doctor result and where the skill was installed.
 ```
 
