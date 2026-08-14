@@ -4,6 +4,11 @@
   "type": "module",
   "description": "CLI for turning Lanhu design URLs into AI-ready design context: parse/schema/html/context pipeline commands",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DaYePython/lanhu-context-cli.git",
+    "directory": "packages/cli"
+  },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },

@@ -4,6 +4,11 @@
   "type": "module",
   "description": "Core logic for lanhu-context: URL parsing, Lanhu API client, schema-to-HTML transforms, design tokens, and context pipeline",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DaYePython/lanhu-context-cli.git",
+    "directory": "packages/core"
+  },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
