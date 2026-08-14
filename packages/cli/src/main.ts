@@ -1,0 +1,90 @@
+// Bin entry for `lanhu` / `lanhu-context`.
+//
+// Delegates to citty for help rendering and subcommand dispatch, with two
+// pre-dispatch fixes so exit-code semantics follow DESIGN.md §6.2:
+// - unknown/missing subcommand is a usage error (exit 2), not citty's
+//   generic exit 1;
+// - `--version --json` emits {name, version, node}.
+
+import { LanhuError } from '@lanhu-context/core';
+import { defineCommand, renderUsage, runMain } from 'citty';
+import { contextCommand } from './commands/context';
+import { htmlCommand } from './commands/html';
+import { parseCommand } from './commands/parse';
+import { schemaCommand } from './commands/schema';
+import { EXIT_USAGE, finishWith } from './exit';
+import { failureEnvelope, serializeEnvelope } from './io/envelope';
+import { writeStdout } from './io/output';
+import { CLI_PKG_NAME, CLI_VERSION } from './version';
+
+const main = defineCommand({
+  meta: {
+    name: 'lanhu',
+    version: CLI_VERSION,
+    description:
+      '蓝湖设计稿上下文管道工具箱：parse / schema / html / context（`lanhu-context` 为等价全名 bin）'
+  },
+  subCommands: {
+    parse: parseCommand,
+    schema: schemaCommand,
+    html: htmlCommand,
+    context: contextCommand
+  }
+});
+
+const KNOWN_COMMANDS = new Set(['parse', 'schema', 'html', 'context']);
+
+async function bootstrap(): Promise<void> {
+  const rawArgs = process.argv.slice(2);
+  // First non-flag token (a lone `-` only appears after a subcommand).
+  const firstPositional = rawArgs.find(
+    arg => arg === '-' || !arg.startsWith('-')
+  );
+  const wantsHelp = rawArgs.includes('--help') || rawArgs.includes('-h');
+
+  if (!firstPositional) {
+    // Global --version (§4.2); with --json: {name, version, node}.
+    if (
+      rawArgs.includes('--version') ||
+      (rawArgs.length === 1 && rawArgs[0] === '-v')
+    ) {
+      writeStdout(
+        rawArgs.includes('--json')
+          ? JSON.stringify({
+              name: CLI_PKG_NAME,
+              version: CLI_VERSION,
+              node: process.version
+            })
+          : CLI_VERSION
+      );
+      return;
+    }
+    if (wantsHelp) {
+      await runMain(main, { rawArgs });
+      return;
+    }
+    // No command given: usage goes to stderr, exit 2.
+    process.stderr.write(`${await renderUsage(main)}\n`);
+    finishWith(EXIT_USAGE);
+    return;
+  }
+
+  if (!KNOWN_COMMANDS.has(firstPositional)) {
+    const error = new LanhuError(
+      'USAGE_ERROR',
+      `unknown command "${firstPositional}" (expected: parse | schema | html | context)`
+    );
+    process.stderr.write(
+      `USAGE_ERROR: ${error.message}\nhint: ${error.hint}\n`
+    );
+    if (rawArgs.includes('--json') || process.stdout.isTTY !== true) {
+      writeStdout(serializeEnvelope(failureEnvelope(firstPositional, error)));
+    }
+    finishWith(EXIT_USAGE);
+    return;
+  }
+
+  await runMain(main, { rawArgs });
+}
+
+void bootstrap();

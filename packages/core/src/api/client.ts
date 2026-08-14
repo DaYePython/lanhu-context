@@ -95,6 +95,44 @@ function isTimeoutLike(error: unknown): boolean {
   return false;
 }
 
+// Walk the error/cause chain looking for an HTTP status (ofetch FetchError
+// exposes status/statusCode; a Response may sit on the chain too).
+function httpStatusOf(error: unknown): number | undefined {
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current != null; depth++) {
+    if (typeof current !== 'object') break;
+    const candidate =
+      (current as { status?: unknown }).status ??
+      (current as { statusCode?: unknown }).statusCode ??
+      (current as { response?: { status?: unknown } }).response?.status;
+    if (typeof candidate === 'number') return candidate;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return undefined;
+}
+
+// Map a 4xx rejection onto the auth/permission error class (exit 4, never
+// retried). Lanhu's WAF answers forged/expired cookies with odd 4xx codes
+// (e.g. 418), so anything 4xx that is not a retryable congestion status
+// (408/429) counts as an auth-layer rejection.
+function classifyClientRejection(
+  endpoint: string,
+  status: number,
+  error: unknown
+): LanhuError {
+  const code =
+    status === 403
+      ? 'ACCESS_DENIED'
+      : status === 404
+        ? 'DESIGN_NOT_FOUND'
+        : 'AUTH_EXPIRED';
+  return new LanhuError(
+    code,
+    `Lanhu API ${endpoint} rejected the request with HTTP ${status} — the token is likely invalid or expired`,
+    { cause: error }
+  );
+}
+
 export class LanhuClient implements DesignSourceClient {
   private readonly main: $Fetch;
   private readonly dds: $Fetch;
@@ -178,6 +216,16 @@ export class LanhuClient implements DesignSourceClient {
           `Lanhu API ${endpoint} timed out`,
           { cause: error }
         );
+      }
+      const status = httpStatusOf(error);
+      if (
+        status !== undefined &&
+        status >= 400 &&
+        status < 500 &&
+        status !== 408 &&
+        status !== 429
+      ) {
+        throw classifyClientRejection(endpoint, status, error);
       }
       const message = error instanceof Error ? error.message : String(error);
       throw new LanhuError(

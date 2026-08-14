@@ -8,8 +8,8 @@ export {
 } from './args';
 export {
   DEFAULT_RETRIES,
-  requireToken,
   type ResolvedConfig,
+  requireToken,
   resolveConfig
 } from './config/index';
 export { exitCodeForError, finishWith } from './exit';

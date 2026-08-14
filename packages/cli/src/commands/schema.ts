@@ -1,0 +1,47 @@
+import { fetchSchema, parseLanhuUrl } from '@lanhu-context/core';
+import { defineCommand } from 'citty';
+import { globalArgs } from '../args';
+import { createClient, requireUrlArg, toDesignRequest } from '../lib';
+import { executeCommand } from '../runner';
+
+export const schemaCommand = defineCommand({
+  meta: {
+    name: 'schema',
+    description: [
+      '拉取原始 DDS schema JSON 并直出 stdout（产物流，适合落盘复查或喂给 `lanhu html -`）',
+      '',
+      '示例:',
+      '  lanhu schema "$URL" > page.schema.json',
+      '  lanhu schema "$URL" | lanhu html - --tailwind > page.html',
+      '  lanhu schema "$URL" --json | jq .data.schema.type'
+    ].join('\n')
+  },
+  args: {
+    url: {
+      type: 'positional',
+      required: false,
+      valueHint: 'url',
+      description: '蓝湖设计稿完整 URL 或 query 串'
+    },
+    ...globalArgs
+  },
+  run: ({ args, rawArgs }) =>
+    executeCommand({
+      command: 'schema',
+      kind: 'artifact',
+      args,
+      rawArgs,
+      handler: async ctx => {
+        const url = requireUrlArg(args.url);
+        const params = parseLanhuUrl(url);
+        const client = createClient(ctx);
+        const schema = await ctx.timed('fetch-schema', () =>
+          fetchSchema(client, toDesignRequest(params))
+        );
+        return {
+          data: { schema },
+          artifact: JSON.stringify(schema)
+        };
+      }
+    })
+});

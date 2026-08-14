@@ -64,6 +64,8 @@ export {
   type RenderHtmlResult,
   renderHtml
 } from './pipeline/stages';
+// Retry policy
+export { isRetryableError, type WithRetryOptions, withRetry } from './retry';
 // Transforms
 export {
   camelToKebab,
@@ -103,5 +105,3 @@ export type {
 } from './types/index';
 // URL parsing
 export { parseLanhuUrl } from './url/parse';
-// Retry policy
-export { isRetryableError, type WithRetryOptions, withRetry } from './retry';

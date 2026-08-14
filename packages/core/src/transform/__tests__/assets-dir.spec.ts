@@ -17,7 +17,11 @@ describe('localizeImageUrls — assetsDir override', () => {
   });
 
   test('replaces the prefix with assetsDir (trailing slash normalized)', () => {
-    const { html, mapping } = localizeImageUrls(HTML, 'Home Page', 'assets/lanhu/');
+    const { html, mapping } = localizeImageUrls(
+      HTML,
+      'Home Page',
+      'assets/lanhu/'
+    );
     expect(Object.keys(mapping)).toEqual([
       'assets/lanhu/icon-1.png',
       'assets/lanhu/icon-2.jpg'
