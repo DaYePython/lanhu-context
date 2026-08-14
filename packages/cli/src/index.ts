@@ -1,4 +1,4 @@
-// lanhu-context-cli — programmatic surface (mainly for tests). The bin entry
+// @lanhu-context/cli — programmatic surface (mainly for tests). The bin entry
 // is src/main.ts.
 export {
   globalArgs,

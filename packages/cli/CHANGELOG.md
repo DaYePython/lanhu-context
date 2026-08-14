@@ -1,4 +1,4 @@
-# lanhu-context-cli
+# @lanhu-context/cli
 
 ## 0.2.0
 

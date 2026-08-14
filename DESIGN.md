@@ -1,4 +1,4 @@
-# lanhu-context-cli 架构设计
+# lanhu-context 架构设计
 
 > 从 lanhu-context-mcp 升级而来、专为 CLI 与 AI 自动化设计的工具。
 > 遵循 UNIX 原则：每个命令只做一件事、可组合、可管道化、机器可读。
@@ -52,7 +52,7 @@
 
 ## 2. 定位与设计目标
 
-**lanhu-context-cli 是一个"设计稿上下文管道工具箱"**：把蓝湖设计稿 URL 按阶段拆成一组可独立调用、可管道组合的小命令，默认输出机器可读结构，为 AI Agent（skills 调度）与 shell 自动化优化，同时保留一条 MCP 兼容通道。
+**lanhu-context 是一个"设计稿上下文管道工具箱"**：把蓝湖设计稿 URL 按阶段拆成一组可独立调用、可管道组合的小命令，默认输出机器可读结构，为 AI Agent（skills 调度）与 shell 自动化优化，同时保留一条 MCP 兼容通道。
 
 设计原则映射（对应需求中的 7 条 CLI 原则）：
 
@@ -71,7 +71,7 @@
 ## 3. Monorepo 架构
 
 ```text
-lanhu-context-cli/
+lanhu-context/
 ├── pnpm-workspace.yaml
 ├── package.json                 # 根：脚本编排、工具链
 ├── tsconfig.base.json
@@ -85,7 +85,7 @@ lanhu-context-cli/
 │   │       ├── pipeline/        # 各阶段的编排函数：每阶段独立导出 + composeContext() 复合
 │   │       ├── errors.ts        # LanhuError { code, severity, hint, retryable } + 错误码表
 │   │       └── types/           # LanhuUrlParams / SchemaNode / DesignMeta / StageResult ...
-│   ├── cli/                     # lanhu-context-cli —— bin: `lanhu`
+│   ├── cli/                     # @lanhu-context/cli —— bin: `lanhu`
 │   │   └── src/
 │   │       ├── commands/        # 一命令一文件：parse/meta/schema/html/tokens/assets/preview/context/auth/doctor/mcp
 │   │       ├── io/              # stdout 数据写出（json/md/html/css 格式器）、stderr 诊断、NDJSON、TTY 检测
