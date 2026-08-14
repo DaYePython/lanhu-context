@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@lanhu-context/core": "workspace:^",
+    "@lanhu-context/mcp": "workspace:^",
     "citty": "^0.2.2",
     "consola": "^3.4.2",
     "dotenv": "^17.4.2"

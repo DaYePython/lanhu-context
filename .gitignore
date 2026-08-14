@@ -9,3 +9,6 @@ coverage/
 .claude/settings.local.json
 
 .DS_Store
+
+# manual playground records (privacy)
+/playground/

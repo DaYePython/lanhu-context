@@ -1,21 +1,44 @@
 {
   "name": "@lanhu-context/mcp",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
-  "description": "MCP compatibility layer for lanhu-context (placeholder, implemented in M4)",
+  "description": "MCP compatibility layer for lanhu-context: the upstream lanhu-context-mcp get_design_context tool contract on top of @lanhu-context/core",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DaYePython/lanhu-context.git",
+    "directory": "packages/mcp"
+  },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "echo \"@lanhu-context/mcp: placeholder package, build arrives in M4\"",
+    "build": "vite build && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@lanhu-context/core": "workspace:^"
+    "@lanhu-context/core": "workspace:^",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "typescript": "^6.0.3"
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.0",
+    "vitest": "^4.1.4"
   }
 }

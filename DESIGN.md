@@ -94,9 +94,11 @@ lanhu-context/
 │   └── mcp/                     # @lanhu-context/mcp —— MCP 兼容层（预留）
 │       └── src/                 # 复用 core.composeContext；注册 get_design_context，保持与 lanhu-context-mcp 工具签名兼容
 ├── skills/
-│   └── lanhu-cli/               # AI Agent 调度技能（见 §8）
-│       ├── SKILL.md
-│       └── references/
+│   ├── lanhu-context-cli/       # CLI 调度技能（见 §8）
+│   │   ├── SKILL.md
+│   │   └── references/
+│   └── lanhu-context-mcp/       # MCP 场景独立技能（transport 配置、迁移对照、MCP 排障）
+│       └── SKILL.md
 ├── playground/                  # 真实 URL 的手动验证场景
 └── docs/
 ```
@@ -334,7 +336,7 @@ lanhu context "$URL" --inline | claude -p "按 context 实现这个页面"
 
 ## 8. skills 调度设计（AI 集成）
 
-`skills/lanhu-cli/SKILL.md` 面向 Agent 的调度逻辑，核心是**场景 → 命令序列**映射，而非重复 flag 文档。
+`skills/lanhu-context-cli/SKILL.md` 面向 Agent 的调度逻辑，核心是**场景 → 命令序列**映射，而非重复 flag 文档。
 
 **写作规范**：全部用中文编写，读者是程序员（以及替程序员干活的 Agent），内容组织贴合工程师思维——
 
@@ -368,7 +370,7 @@ SKILL.md 行为约束（沿用上游技能的纪律并适配新 CLI）：
 3. 尊重严重性分级：degraded 不视为失败，但要在答复中如实告知用户哪些附属产物缺失。
 4. 优先原子命令按需取数据，避免每次都跑完整 `context`（省时间与上下文窗口）。
 
-references/ 保留：`cli-reference.md`（参数表）、`pipeline.md`（管道配方）、`troubleshooting.md`（按退出码组织）、`mcp-boundary.md`（何时改用 MCP 模式）。
+references/ 保留：`cli-reference.md`（参数表）、`pipeline.md`（管道配方）、`troubleshooting.md`（按退出码组织）。MCP 场景（transport 客户端配置、`--mode`/`--compat-strict` 语义、自上游包迁移对照、MCP 排障）独立成 `skills/lanhu-context-mcp` 技能，CLI 技能中只留指路句。
 
 ---
 
@@ -402,5 +404,5 @@ references/ 保留：`cli-reference.md`（参数表）、`pipeline.md`（管道�
    - DoD：§4.4 前两个管道示例对真实 URL 原样可执行；退出码 0/2/3/4/5 各有集成用例；§5 输出契约测试通过（报告类无 TTY 自动 `--json`、产物流原样直出、失败 envelope 走 stdout）。
 3. **M3 全命令**：`meta/tokens/assets/preview/auth/doctor`、批量 stdin、幂等下载。
    - DoD：全部命令 `--help` 含可运行示例；`--keep-going` 部分失败退出码 9 + NDJSON 明细有测试；`assets --download` 二次执行全 `skipped`（幂等验证）；`auth` 三件套对真实 API 联通。
-4. **M4 MCP 兼容层 + skills**：`packages/mcp` 与 `skills/lanhu-cli`；对照上游集成测试验证工具签名兼容。
+4. **M4 MCP 兼容层 + skills**：`packages/mcp` 与 `skills/lanhu-context-cli` + `skills/lanhu-context-mcp`；对照上游集成测试验证工具签名兼容。
    - DoD：`get_design_context` 入参/返回结构与上游对照测试通过（含 `--compat-strict` 回退语义）；SKILL.md 触发 description 就位，§8 五场景在 playground 各演练通过一次。
