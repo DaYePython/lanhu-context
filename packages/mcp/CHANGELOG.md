@@ -1,5 +1,13 @@
 # @lanhu-context/mcp
 
+## 0.2.1
+
+### Patch Changes
+
+- 8b3a2d0: docs: 为三个包新增 npm README（安装、命令/能力概览、MCP 客户端配置与上游迁移说明）
+- Updated dependencies [8b3a2d0]
+  - @lanhu-context/core@0.3.1
+
 ## 0.2.0
 
 ### Minor Changes

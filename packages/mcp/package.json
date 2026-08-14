@@ -1,6 +1,6 @@
 {
   "name": "@lanhu-context/mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "MCP compatibility layer for lanhu-context: the upstream lanhu-context-mcp get_design_context tool contract on top of @lanhu-context/core",
   "license": "MIT",
