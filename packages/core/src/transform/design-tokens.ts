@@ -1,10 +1,58 @@
 // Extract design-token hints for high-risk sketch elements such as gradients,
 // non-uniform radii, borders, and shadows.
+//
+// Two-layer API:
+// - extractDesignTokenEntries(): structured entries (used by `lanhu tokens`
+//   for --format json/css output);
+// - extractDesignTokens(): the legacy text rendering derived from the same
+//   entries (used inside context.md) — output format is unchanged.
 
 import type { BorderObj, FillObj, ShadowObj } from '../types/index';
 import { roundNum } from './css-helpers';
 
 const NOISE_TYPES = new Set(['color', 'gradient', 'colorStop', 'colorControl']);
+
+// Structured token entry (all numbers already rounded for display).
+export interface DesignTokenFrame {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface DesignTokenFill {
+  kind: 'solid' | 'gradient';
+  /** Solid: the color value; gradient: a CSS linear-gradient() string. */
+  value: string;
+}
+
+export interface DesignTokenBorder {
+  thickness: number;
+  position: string;
+  color: string;
+}
+
+export interface DesignTokenShadow {
+  color: string;
+  offsetX: number;
+  offsetY: number;
+  blur: number;
+  spread: number;
+}
+
+export interface DesignTokenEntry {
+  type: string;
+  name: string;
+  /** Layer path (parent/child); present only for nested layers. */
+  path?: string;
+  frame: DesignTokenFrame;
+  radius?: number | number[];
+  fills: DesignTokenFill[];
+  borders: DesignTokenBorder[];
+  /** Opacity percentage, present only when < 100. */
+  opacity?: number;
+  shadows: DesignTokenShadow[];
+}
 
 function getDimensions(
   obj: Record<string, unknown>
@@ -20,11 +68,11 @@ function getDimensions(
   return [x || 0, y || 0, w || 0, h || 0];
 }
 
-function simplifyFill(fill: FillObj): string | null {
+function simplifyFill(fill: FillObj): DesignTokenFill | null {
   if (fill.isEnabled === false) return null;
   const fillType = fill.fillType ?? 0;
   if (fillType === 0) {
-    return `solid(${fill.color?.value ?? 'unknown'})`;
+    return { kind: 'solid', value: fill.color?.value ?? 'unknown' };
   }
   if (fillType === 1) {
     const gradient = fill.gradient || {};
@@ -39,12 +87,15 @@ function simplifyFill(fill: FillObj): string | null {
       const p = Math.round((s.position ?? 0) * 100);
       return `${c} ${p}%`;
     });
-    return `linear-gradient(${angle}deg, ${parts.join(', ')})`;
+    return {
+      kind: 'gradient',
+      value: `linear-gradient(${angle}deg, ${parts.join(', ')})`
+    };
   }
   return null;
 }
 
-function simplifyBorder(border: BorderObj): string | null {
+function simplifyBorder(border: BorderObj): DesignTokenBorder | null {
   if (border.isEnabled === false) return null;
   const color = border.color?.value ?? 'unknown';
   const thickness = roundNum(border.thickness ?? 1);
@@ -54,13 +105,18 @@ function simplifyBorder(border: BorderObj): string | null {
     中心边框: 'center'
   };
   const pos = posMap[border.position ?? ''] ?? border.position ?? 'center';
-  return `${thickness}px ${pos} ${color}`;
+  return { thickness, position: pos, color };
 }
 
-function simplifyShadow(shadow: ShadowObj): string | null {
+function simplifyShadow(shadow: ShadowObj): DesignTokenShadow | null {
   if (shadow.isEnabled === false) return null;
-  const color = shadow.color?.value ?? 'unknown';
-  return `${color} ${roundNum(shadow.offsetX ?? 0)}px ${roundNum(shadow.offsetY ?? 0)}px ${roundNum(shadow.blurRadius ?? 0)}px ${roundNum(shadow.spread ?? 0)}px`;
+  return {
+    color: shadow.color?.value ?? 'unknown',
+    offsetX: roundNum(shadow.offsetX ?? 0),
+    offsetY: roundNum(shadow.offsetY ?? 0),
+    blur: roundNum(shadow.blurRadius ?? 0),
+    spread: roundNum(shadow.spread ?? 0)
+  };
 }
 
 function hasOnlyTransparentSolid(fills: FillObj[]): boolean {
@@ -110,10 +166,62 @@ function isHighRisk(obj: Record<string, unknown>): boolean {
   return false;
 }
 
-export function extractDesignTokens(
+function toEntry(
+  obj: Record<string, unknown>,
+  parentPath: string
+): DesignTokenEntry {
+  const objType = obj.type ?? obj.ddsType ?? 'unknown';
+  const name = String(obj.name ?? '');
+  const [x, y, w, h] = getDimensions(obj);
+
+  let radius: number | number[] | undefined;
+  const rawRadius = obj.radius;
+  if (rawRadius != null) {
+    radius = Array.isArray(rawRadius)
+      ? (rawRadius as number[]).map(r => roundNum(r))
+      : roundNum(rawRadius as number);
+  }
+
+  const fills: DesignTokenFill[] = [];
+  for (const f of (obj.fills ?? []) as FillObj[]) {
+    const s = simplifyFill(f);
+    if (s) fills.push(s);
+  }
+  const borders: DesignTokenBorder[] = [];
+  for (const b of (obj.borders ?? []) as BorderObj[]) {
+    const s = simplifyBorder(b);
+    if (s) borders.push(s);
+  }
+  const shadows: DesignTokenShadow[] = [];
+  for (const sh of (obj.shadows ?? []) as ShadowObj[]) {
+    const s = simplifyShadow(sh);
+    if (s) shadows.push(s);
+  }
+
+  const opacity = obj.opacity as number | undefined;
+
+  return {
+    type: String(objType),
+    name,
+    path: parentPath ? `${parentPath}/${name}` : undefined,
+    frame: {
+      x: Math.round(x),
+      y: Math.round(y),
+      width: Math.round(w),
+      height: Math.round(h)
+    },
+    radius,
+    fills,
+    borders,
+    opacity: opacity != null && opacity < 100 ? opacity : undefined,
+    shadows
+  };
+}
+
+export function extractDesignTokenEntries(
   sketchData: Record<string, unknown>
-): string {
-  const tokens: string[] = [];
+): DesignTokenEntry[] {
+  const entries: DesignTokenEntry[] = [];
   const visited = new WeakSet<Record<string, unknown>>();
 
   function buildPath(parentPath: string, name: string): string {
@@ -130,44 +238,7 @@ export function extractDesignTokens(
     const currentPath = buildPath(parentPath, name);
 
     if (isHighRisk(obj)) {
-      const objType = obj.type ?? obj.ddsType ?? 'unknown';
-      const [x, y, w, h] = getDimensions(obj);
-      const lines: string[] = [
-        `[${objType}] "${name}" @(${Math.round(x)},${Math.round(y)}) ${Math.round(w)}x${Math.round(h)}`
-      ];
-      if (parentPath) lines[0] += `  path: ${currentPath}`;
-
-      const radius = obj.radius;
-      if (radius != null) {
-        if (Array.isArray(radius)) {
-          const rounded = (radius as number[]).map(r => roundNum(r));
-          lines.push(
-            new Set(rounded).size === 1
-              ? `  radius: ${rounded[0]}`
-              : `  radius: ${JSON.stringify(rounded)}`
-          );
-        } else {
-          lines.push(`  radius: ${roundNum(radius as number)}`);
-        }
-      }
-
-      for (const f of (obj.fills ?? []) as FillObj[]) {
-        const s = simplifyFill(f);
-        if (s) lines.push(`  fill: ${s}`);
-      }
-      for (const b of (obj.borders ?? []) as BorderObj[]) {
-        const s = simplifyBorder(b);
-        if (s) lines.push(`  border: ${s}`);
-      }
-      const opacity = obj.opacity as number | undefined;
-      if (opacity != null && opacity < 100)
-        lines.push(`  opacity: ${opacity}%`);
-      for (const sh of (obj.shadows ?? []) as ShadowObj[]) {
-        const s = simplifyShadow(sh);
-        if (s) lines.push(`  shadow: ${s}`);
-      }
-
-      tokens.push(lines.join('\n'));
+      entries.push(toEntry(obj, parentPath));
     }
 
     for (const child of (obj.layers ?? []) as Record<string, unknown>[]) {
@@ -195,5 +266,126 @@ export function extractDesignTokens(
     }
   }
 
-  return tokens.length > 0 ? tokens.join('\n') : '';
+  return entries;
+}
+
+// Legacy text rendering of one entry — format kept byte-identical to the
+// pre-refactor implementation (context.md consumers depend on it).
+function renderEntry(entry: DesignTokenEntry): string {
+  const { frame } = entry;
+  const lines: string[] = [
+    `[${entry.type}] "${entry.name}" @(${frame.x},${frame.y}) ${frame.width}x${frame.height}`
+  ];
+  if (entry.path) lines[0] += `  path: ${entry.path}`;
+
+  if (entry.radius != null) {
+    if (Array.isArray(entry.radius)) {
+      lines.push(
+        new Set(entry.radius).size === 1
+          ? `  radius: ${entry.radius[0]}`
+          : `  radius: ${JSON.stringify(entry.radius)}`
+      );
+    } else {
+      lines.push(`  radius: ${entry.radius}`);
+    }
+  }
+
+  for (const fill of entry.fills) {
+    lines.push(
+      fill.kind === 'solid'
+        ? `  fill: solid(${fill.value})`
+        : `  fill: ${fill.value}`
+    );
+  }
+  for (const border of entry.borders) {
+    lines.push(
+      `  border: ${border.thickness}px ${border.position} ${border.color}`
+    );
+  }
+  if (entry.opacity != null) lines.push(`  opacity: ${entry.opacity}%`);
+  for (const shadow of entry.shadows) {
+    lines.push(
+      `  shadow: ${shadow.color} ${shadow.offsetX}px ${shadow.offsetY}px ${shadow.blur}px ${shadow.spread}px`
+    );
+  }
+
+  return lines.join('\n');
+}
+
+export function extractDesignTokens(
+  sketchData: Record<string, unknown>
+): string {
+  const entries = extractDesignTokenEntries(sketchData);
+  return entries.length > 0 ? entries.map(renderEntry).join('\n') : '';
+}
+
+// --- CSS variables output (`lanhu tokens --format css`) ---
+
+function slugify(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9一-鿿]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || 'token';
+}
+
+function cssRadiusValue(radius: number | number[]): string {
+  if (Array.isArray(radius)) {
+    return new Set(radius).size === 1
+      ? `${radius[0]}px`
+      : radius.map(r => `${r}px`).join(' ');
+  }
+  return `${radius}px`;
+}
+
+function varName(slug: string, kind: string, index: number): string {
+  return index === 0 ? `--${slug}-${kind}` : `--${slug}-${kind}-${index + 1}`;
+}
+
+/**
+ * Render token entries as CSS custom properties in a `:root { ... }` block.
+ * Values are CSS-usable where possible: solid fills become colors, gradients
+ * stay linear-gradient() strings, borders become `<w>px solid <color>`
+ * shorthand, shadows use box-shadow ordering, opacity becomes a 0-1 number.
+ */
+export function formatDesignTokensCss(entries: DesignTokenEntry[]): string {
+  if (entries.length === 0) return ':root {}\n';
+
+  const used = new Map<string, number>();
+  const lines: string[] = [':root {'];
+
+  for (const entry of entries) {
+    const base = slugify(entry.name);
+    const seen = used.get(base) ?? 0;
+    used.set(base, seen + 1);
+    const slug = seen === 0 ? base : `${base}-${seen + 1}`;
+
+    const { frame } = entry;
+    lines.push(
+      `  /* [${entry.type}] "${entry.name}" @(${frame.x},${frame.y}) ${frame.width}x${frame.height} */`
+    );
+
+    if (entry.radius != null) {
+      lines.push(`  --${slug}-radius: ${cssRadiusValue(entry.radius)};`);
+    }
+    entry.fills.forEach((fill, i) => {
+      lines.push(`  ${varName(slug, 'fill', i)}: ${fill.value};`);
+    });
+    entry.borders.forEach((border, i) => {
+      lines.push(
+        `  ${varName(slug, 'border', i)}: ${border.thickness}px solid ${border.color};`
+      );
+    });
+    if (entry.opacity != null) {
+      lines.push(`  --${slug}-opacity: ${roundNum(entry.opacity / 100)};`);
+    }
+    entry.shadows.forEach((shadow, i) => {
+      lines.push(
+        `  ${varName(slug, 'shadow', i)}: ${shadow.offsetX}px ${shadow.offsetY}px ${shadow.blur}px ${shadow.spread}px ${shadow.color};`
+      );
+    });
+  }
+
+  lines.push('}');
+  return `${lines.join('\n')}\n`;
 }

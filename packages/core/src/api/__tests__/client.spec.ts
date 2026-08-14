@@ -90,7 +90,8 @@ describe('LanhuClient — headers and routing', () => {
       id: 'img-1',
       name: 'Init Home',
       url: 'https://example.com/init.png',
-      projectName: 'Init Project'
+      projectName: 'Init Project',
+      versions: { count: 0, latestHasSketchJson: false }
     });
 
     expect(calls).toHaveLength(1);
@@ -302,19 +303,22 @@ describe('LanhuClient — meta fallbacks', () => {
       id: 'img-1',
       name: 'Home',
       url: 'https://example.com/preview.png',
-      projectName: 'Project A'
+      projectName: 'Project A',
+      versions: { count: 0, latestHasSketchJson: false }
     });
     await expect(client.getDesignMeta(REQUEST)).resolves.toEqual({
       id: 'img-1',
       name: 'img-1',
       url: 'https://example.com/version-preview.png',
-      projectName: 'Project B'
+      projectName: 'Project B',
+      versions: { count: 1, latestHasSketchJson: false }
     });
     await expect(client.getDesignMeta(REQUEST)).resolves.toEqual({
       id: 'img-1',
       name: 'img-1',
       url: undefined,
-      projectName: undefined
+      projectName: undefined,
+      versions: { count: 0, latestHasSketchJson: false }
     });
   });
 });

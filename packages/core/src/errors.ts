@@ -141,6 +141,12 @@ export const ERROR_REGISTRY = {
     retryable: false,
     hint: 'Tailwind conversion failed; the original HTML+CSS was kept. Use it as-is or retry with a different --tw-version.'
   },
+  ASSET_DOWNLOAD_FAILED: {
+    severity: 'degraded',
+    exitClass: 0,
+    retryable: true,
+    hint: 'One or more slice assets failed to download; the rest were delivered. Re-run `lanhu assets --download` (idempotent: finished files are skipped), or use --strict to fail fast.'
+  },
   // --- batch partial failure (exit class 9) ---
   BATCH_PARTIAL: {
     severity: 'fatal',

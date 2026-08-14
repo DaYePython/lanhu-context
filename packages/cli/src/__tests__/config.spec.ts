@@ -1,12 +1,14 @@
-// Config layer tests (DESIGN.md §7, M2 scope):
+// Config layer tests (DESIGN.md §7, M3 scope):
 // CLI flag > process env > env file (--env-file > ENV_FILE > cwd/.env.local)
-// > defaults, with --cwd applied before env loading.
+// > lanhu.config.json (project) > user config.json > defaults, with --cwd
+// applied before env loading.
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LanhuError } from '@lanhu-context/core';
 import {
   DEFAULT_RETRIES,
+  maskSecret,
   type ProcessIo,
   requireToken,
   resolveConfig
@@ -26,7 +28,9 @@ function fakeIo(
 ): ProcessIo & { cwd(): string } {
   let cwd = initialCwd;
   return {
-    env,
+    // Isolate the user-config layer into a temp dir unless a test injects
+    // its own XDG_CONFIG_HOME — never touch the real user config.
+    env: { XDG_CONFIG_HOME: makeTmpDir(), ...env },
     getCwd: () => cwd,
     chdir: dir => {
       cwd = dir;
@@ -197,6 +201,126 @@ describe('resolveConfig — numeric and lang validation', () => {
     expect(() => resolveConfig({ lang: 'fr-FR' }, fakeIo(dir))).toThrow(
       LanhuError
     );
+  });
+});
+
+describe('resolveConfig — project & user config layers (M3)', () => {
+  test('env file > lanhu.config.json > user config.json for tokens', () => {
+    const dir = makeTmpDir();
+    const xdg = makeTmpDir();
+    mkdirSync(join(xdg, 'lanhu'), { recursive: true });
+    writeFileSync(
+      join(xdg, 'lanhu', 'config.json'),
+      JSON.stringify({ lanhuToken: 'from-user', ddsToken: 'dds-user' })
+    );
+    const io = () => fakeIo(dir, { XDG_CONFIG_HOME: xdg });
+
+    // user config only
+    let config = resolveConfig({}, io());
+    expect(config.token).toBe('from-user');
+    expect(config.tokenSource).toBe('user-config');
+    expect(config.ddsToken).toBe('dds-user');
+    expect(config.ddsTokenSource).toBe('user-config');
+    expect(config.userConfigPath).toBe(join(xdg, 'lanhu', 'config.json'));
+    expect(config.userConfigExists).toBe(true);
+
+    // project config beats user config
+    writeFileSync(
+      join(dir, 'lanhu.config.json'),
+      JSON.stringify({ lanhuToken: 'from-project' })
+    );
+    config = resolveConfig({}, io());
+    expect(config.token).toBe('from-project');
+    expect(config.tokenSource).toBe('project-config');
+    expect(config.projectConfigPath).toBe(join(dir, 'lanhu.config.json'));
+    // dds falls through to the user layer
+    expect(config.ddsTokenSource).toBe('user-config');
+
+    // env file beats project config
+    writeFileSync(join(dir, '.env.local'), 'LANHU_TOKEN=from-file\n');
+    config = resolveConfig({}, io());
+    expect(config.token).toBe('from-file');
+    expect(config.tokenSource).toBe('env-file');
+
+    // process env beats env file; flag beats everything
+    config = resolveConfig(
+      {},
+      fakeIo(dir, {
+        XDG_CONFIG_HOME: xdg,
+        LANHU_TOKEN: 'from-env'
+      })
+    );
+    expect(config.tokenSource).toBe('env');
+    config = resolveConfig({ token: 'from-flag' }, io());
+    expect(config.tokenSource).toBe('flag');
+  });
+
+  test('timeout/retries/lang fall back through project and user configs', () => {
+    const dir = makeTmpDir();
+    const xdg = makeTmpDir();
+    mkdirSync(join(xdg, 'lanhu'), { recursive: true });
+    writeFileSync(
+      join(xdg, 'lanhu', 'config.json'),
+      JSON.stringify({ timeout: 1000, retries: 5, lang: 'zh-CN' })
+    );
+    const io = () => fakeIo(dir, { XDG_CONFIG_HOME: xdg });
+
+    let config = resolveConfig({}, io());
+    expect(config.timeout).toBe(1000);
+    expect(config.retries).toBe(5);
+    expect(config.lang).toBe('zh-CN');
+
+    writeFileSync(
+      join(dir, 'lanhu.config.json'),
+      JSON.stringify({ timeout: 2000 })
+    );
+    config = resolveConfig({}, io());
+    expect(config.timeout).toBe(2000); // project beats user
+    expect(config.retries).toBe(5); // user still fills the gap
+
+    // flags beat both layers
+    config = resolveConfig({ timeout: '3000', lang: 'en-US' }, io());
+    expect(config.timeout).toBe(3000);
+    expect(config.lang).toBe('en-US');
+  });
+
+  test('a broken project or user config is CONFIG_INVALID (exit 3)', () => {
+    const dir = makeTmpDir();
+    writeFileSync(join(dir, 'lanhu.config.json'), '{not json');
+    expect(() => resolveConfig({}, fakeIo(dir))).toThrowError(
+      expect.objectContaining({ code: 'CONFIG_INVALID' })
+    );
+
+    const dir2 = makeTmpDir();
+    const xdg = makeTmpDir();
+    mkdirSync(join(xdg, 'lanhu'), { recursive: true });
+    writeFileSync(join(xdg, 'lanhu', 'config.json'), '[]');
+    expect(() =>
+      resolveConfig({}, fakeIo(dir2, { XDG_CONFIG_HOME: xdg }))
+    ).toThrowError(expect.objectContaining({ code: 'CONFIG_INVALID' }));
+  });
+
+  test('LANHU_TEST_URL is surfaced from env or env file for `auth test`', () => {
+    const dir = makeTmpDir();
+    writeFileSync(join(dir, '.env.local'), 'LANHU_TEST_URL=tid=a&pid=b\n');
+    expect(resolveConfig({}, fakeIo(dir)).testUrl).toBe('tid=a&pid=b');
+    expect(
+      resolveConfig({}, fakeIo(dir, { LANHU_TEST_URL: 'tid=x&pid=y' })).testUrl
+    ).toBe('tid=x&pid=y');
+  });
+});
+
+describe('maskSecret', () => {
+  test('long secrets show first/last 4 chars + length, never the value', () => {
+    const secret = 'session=super-secret-cookie-value-123456';
+    const masked = maskSecret(secret);
+    expect(masked).toBe(`sess…3456 (length ${secret.length})`);
+    expect(masked).not.toContain('super-secret');
+  });
+
+  test('short secrets reveal nothing but the length', () => {
+    expect(maskSecret('shorty')).toBe('**** (length 6)');
+    expect(maskSecret('elevenchars')).toBe('**** (length 11)');
   });
 });
 

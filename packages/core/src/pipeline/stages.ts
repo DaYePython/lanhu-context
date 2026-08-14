@@ -6,7 +6,11 @@ import type { Buffer } from 'node:buffer';
 import type { DesignSourceClient } from '../api/client';
 import { LanhuError } from '../errors';
 import { convertHtmlToTailwind } from '../transform/css-to-tailwind';
-import { extractDesignTokens } from '../transform/design-tokens';
+import {
+  type DesignTokenEntry,
+  extractDesignTokenEntries,
+  extractDesignTokens
+} from '../transform/design-tokens';
 import {
   convertLanhuToHtml,
   localizeImageUrls
@@ -115,6 +119,15 @@ export async function extractTokens(
 ): Promise<string> {
   const sketchJson = await client.getSketchJson(request);
   return extractDesignTokens(sketchJson);
+}
+
+// Stage: the same tokens as structured entries (for --format json/css).
+export async function extractTokenEntries(
+  client: DesignSourceClient,
+  request: LanhuDesignRequest
+): Promise<DesignTokenEntry[]> {
+  const sketchJson = await client.getSketchJson(request);
+  return extractDesignTokenEntries(sketchJson);
 }
 
 // Stage: preview image bytes.

@@ -1,5 +1,5 @@
 // Unit tests for resolveOutDir two-tier fallback (config default > cwd).
-import { resolve as resolvePath } from 'path';
+import { resolve as resolvePath } from 'node:path';
 import { DEFAULT_OUT_DIR_NAME, resolveOutDir } from '../out-dir';
 
 describe('resolveOutDir', () => {

@@ -25,13 +25,23 @@ export {
 } from './errors';
 // Filesystem delivery
 export {
+  type AssetDownloadItem,
+  type AssetItemStatus,
+  DEFAULT_DOWNLOAD_CONCURRENCY,
+  type DownloadAssetsOptions,
+  type DownloadAssetsResult,
+  type DownloadAssetsSummary,
+  downloadAssets
+} from './fs/asset-download';
+export {
   type DeliveryFiles,
   type FileDeliveryInput,
   type FileDeliveryResult,
   type FileInfo,
   type FileWriteStatus,
   sanitizeDesignDirName,
-  writeDesignFiles
+  writeDesignFiles,
+  writeFileIdempotent
 } from './fs/file-delivery';
 export {
   DEFAULT_OUT_DIR_NAME,
@@ -56,6 +66,7 @@ export {
 // Pipeline stages + composite
 export {
   buildAssetsMapping,
+  extractTokenEntries,
   extractTokens,
   fetchMeta,
   fetchPreview,
@@ -80,7 +91,16 @@ export {
   type ConvertHtmlToTailwindOptions,
   convertHtmlToTailwind
 } from './transform/css-to-tailwind';
-export { extractDesignTokens } from './transform/design-tokens';
+export {
+  type DesignTokenBorder,
+  type DesignTokenEntry,
+  type DesignTokenFill,
+  type DesignTokenFrame,
+  type DesignTokenShadow,
+  extractDesignTokenEntries,
+  extractDesignTokens,
+  formatDesignTokensCss
+} from './transform/design-tokens';
 export {
   pickLatestVersionId,
   pickPreviewUrl,
@@ -95,6 +115,7 @@ export {
 export type {
   BorderObj,
   DesignMeta,
+  DesignVersionsSummary,
   DownloadImageRequest,
   FillObj,
   LanhuApiResponse,

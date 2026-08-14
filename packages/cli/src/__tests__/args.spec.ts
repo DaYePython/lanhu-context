@@ -3,8 +3,11 @@
 import { LanhuError } from '@lanhu-context/core';
 import { parseArgs } from 'citty';
 import {
+  batchArgs,
   globalArgs,
+  toConcurrency,
   toConfigFlags,
+  toTokensFormat,
   toTransformOptions,
   transformArgs
 } from '../args';
@@ -98,6 +101,47 @@ describe('transform flags', () => {
       expect(error).toBeInstanceOf(LanhuError);
       expect((error as LanhuError).code).toBe('USAGE_ERROR');
       expect((error as LanhuError).exitClass).toBe(2);
+    }
+  });
+});
+
+describe('M3 flags: batch / format / concurrency', () => {
+  test('--stdin and --keep-going default to false and parse as booleans', () => {
+    expect(parseArgs([], batchArgs)).toMatchObject({
+      stdin: false,
+      'keep-going': false
+    });
+    expect(parseArgs(['--stdin', '--keep-going'], batchArgs)).toMatchObject({
+      stdin: true,
+      'keep-going': true
+    });
+  });
+
+  test('toTokensFormat accepts json (default) and css, rejects the rest', () => {
+    expect(toTokensFormat({ _: [] })).toBe('json');
+    expect(toTokensFormat({ _: [], format: 'json' })).toBe('json');
+    expect(toTokensFormat({ _: [], format: 'css' })).toBe('css');
+    try {
+      toTokensFormat({ _: [], format: 'scss' });
+      throw new Error('expected USAGE_ERROR');
+    } catch (error) {
+      expect(error).toBeInstanceOf(LanhuError);
+      expect((error as LanhuError).code).toBe('USAGE_ERROR');
+    }
+  });
+
+  test('toConcurrency validates a positive integer with a fallback', () => {
+    expect(toConcurrency({ _: [] }, 4)).toBe(4);
+    expect(toConcurrency({ _: [], concurrency: '8' }, 4)).toBe(8);
+    for (const bad of ['0', '-2', '1.5', 'many']) {
+      try {
+        toConcurrency({ _: [], concurrency: bad }, 4);
+        throw new Error(`expected USAGE_ERROR for ${bad}`);
+      } catch (error) {
+        expect(error).toBeInstanceOf(LanhuError);
+        expect((error as LanhuError).code).toBe('USAGE_ERROR');
+        expect((error as LanhuError).exitClass).toBe(2);
+      }
     }
   });
 });

@@ -317,11 +317,20 @@ export class LanhuClient implements DesignSourceClient {
   // Return display-ready design metadata for a single image.
   async getDesignMeta(request: LanhuDesignRequest): Promise<DesignMeta> {
     const { name, ...result } = await this.getDesignResult(request);
+    const versions = Array.isArray(result.versions)
+      ? (result.versions as Array<{ json_url?: unknown }>)
+      : [];
+    const latestJsonUrl = versions[0]?.json_url;
     return {
       id: request.imageId,
       name: String(name ?? request.imageId),
       url: pickPreviewUrl(result),
-      projectName: pickProjectName(result)
+      projectName: pickProjectName(result),
+      versions: {
+        count: versions.length,
+        latestHasSketchJson:
+          typeof latestJsonUrl === 'string' && latestJsonUrl.length > 0
+      }
     };
   }
 

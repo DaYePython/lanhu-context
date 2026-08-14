@@ -46,7 +46,9 @@ export function formatCssValue(
       return value.replace(
         /rgba\(([\d.]+),\s*([\d.]+),\s*([\d.]+),\s*([\d.]+)\)/g,
         (_match, r, g, b, a) => {
-          const alpha = a.includes('.') ? parseFloat(a) : parseInt(a);
+          const alpha = a.includes('.')
+            ? Number.parseFloat(a)
+            : Number.parseInt(a, 10);
           return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
       );

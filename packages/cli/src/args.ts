@@ -1,6 +1,4 @@
-// Shared citty arg definitions (DESIGN.md §4.2, M2 scope only — --stdin,
-// --dry-run, --format, -o and --keep-going arrive in M3 and are deliberately
-// absent from help output until implemented).
+// Shared citty arg definitions (DESIGN.md §4.2).
 
 import { LanhuError } from '@lanhu-context/core';
 import type { ArgsDef, ParsedArgs } from 'citty';
@@ -108,6 +106,52 @@ export const transformArgs = {
 } as const satisfies ArgsDef;
 
 export type GlobalArgs = ParsedArgs<typeof globalArgs>;
+
+// --stdin batch mode flags (§5.1) — only on commands with a batchItem handler.
+export const batchArgs = {
+  stdin: {
+    type: 'boolean',
+    default: false,
+    description:
+      '批处理：从 stdin 逐行读 URL（或 NDJSON {"url":...}），stdout 逐条输出 envelope NDJSON；与位置参数/--inline 互斥'
+  },
+  'keep-going': {
+    type: 'boolean',
+    default: false,
+    description:
+      '批处理单条失败不中断（默认首败即停）；部分失败时整体退出码 9，明细看 stdout NDJSON 的 ok:false 行'
+  }
+} as const satisfies ArgsDef;
+
+export function toOutputOption(args: AnyParsedArgs): string | undefined {
+  const value = args.output;
+  return typeof value === 'string' && value !== '' ? value : undefined;
+}
+
+// Validated --format for `tokens` (json | css).
+export function toTokensFormat(args: AnyParsedArgs): 'json' | 'css' {
+  const raw = args.format;
+  if (raw === undefined || raw === '' || raw === 'json') return 'json';
+  if (raw === 'css') return 'css';
+  throw new LanhuError(
+    'USAGE_ERROR',
+    `--format expects "json" or "css", got "${String(raw)}"`
+  );
+}
+
+// Validated --concurrency for `assets --download` (integer >= 1).
+export function toConcurrency(args: AnyParsedArgs, fallback: number): number {
+  const raw = args.concurrency;
+  if (raw === undefined || raw === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1) {
+    throw new LanhuError(
+      'USAGE_ERROR',
+      `--concurrency expects an integer >= 1, got "${String(raw)}"`
+    );
+  }
+  return value;
+}
 
 export function toConfigFlags(args: AnyParsedArgs): ConfigFlags {
   return {

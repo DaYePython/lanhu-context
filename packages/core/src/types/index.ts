@@ -1,10 +1,18 @@
 // Shared types for @lanhu-context/core.
 
+// Summary of a design's version list (full version payloads stay internal).
+export interface DesignVersionsSummary {
+  count: number;
+  /** Whether the latest version exposes a Sketch json_url (token source). */
+  latestHasSketchJson: boolean;
+}
+
 export interface DesignMeta {
   id: string;
   name: string;
   url?: string;
   projectName?: string;
+  versions?: DesignVersionsSummary;
 }
 
 export interface LanhuDesignRequest {

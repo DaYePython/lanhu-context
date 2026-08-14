@@ -53,6 +53,8 @@ const testUrl = process.env.LANHU_TEST_URL || envFile.LANHU_TEST_URL || '';
 interface CliResult {
   code: number;
   stdout: string;
+  /** Raw stdout bytes (for binary artifacts like `preview -o -`). */
+  stdoutBuf: Buffer;
   stderr: string;
 }
 
@@ -86,9 +88,11 @@ function runCli(
     child.stderr.on('data', chunk => stderr.push(chunk));
     child.on('error', reject);
     child.on('close', code => {
+      const stdoutBuf = Buffer.concat(stdout);
       resolve({
         code: code ?? -1,
-        stdout: Buffer.concat(stdout).toString('utf8'),
+        stdout: stdoutBuf.toString('utf8'),
+        stdoutBuf,
         stderr: Buffer.concat(stderr).toString('utf8')
       });
     });
@@ -260,4 +264,188 @@ describe.runIf(enabled)('CLI integration (RUN_INTEGRATION=1)', () => {
     });
     expect(conflict.code).toBe(2);
   }, 240_000);
+});
+
+// --- M3: meta/tokens/assets/preview/auth/doctor + --stdin batch (§11 M3 DoD) ---
+describe.runIf(enabled)('CLI integration M3 (RUN_INTEGRATION=1)', () => {
+  let m3Dir = tmpdir();
+
+  beforeAll(() => {
+    m3Dir = mkdtempSync(join(tmpdir(), 'lanhu-cli-m3-'));
+    // The M2 block's afterAll removed its workDir; spawn cwd must exist.
+    workDir = m3Dir;
+  });
+
+  afterAll(() => {
+    rmSync(m3Dir, { recursive: true, force: true });
+  });
+
+  // §11 M3 DoD: every command's --help contains runnable examples.
+  test('every command --help shows runnable examples', async () => {
+    const commands = [
+      ['parse'],
+      ['meta'],
+      ['schema'],
+      ['html'],
+      ['tokens'],
+      ['assets'],
+      ['preview'],
+      ['context'],
+      ['auth'],
+      ['auth', 'set'],
+      ['auth', 'status'],
+      ['auth', 'test'],
+      ['doctor']
+    ];
+    for (const command of commands) {
+      const result = await runCli([...command, '--help']);
+      expect(result.code, command.join(' ')).toBe(0);
+      const text = result.stdout + result.stderr;
+      expect(text, `${command.join(' ')} --help`).toContain('示例');
+      expect(text, `${command.join(' ')} --help`).toContain('lanhu ');
+    }
+  }, 120_000);
+
+  test('meta reports name/imageId/previewUrl/versions summary', async () => {
+    const result = await runCli(['meta', testUrl, '--json'], {
+      env: withToken
+    });
+    expect(result.code).toBe(0);
+    const envelope = JSON.parse(result.stdout);
+    expect(envelope.ok).toBe(true);
+    expect(envelope.data.name).toBeTruthy();
+    expect(envelope.data.imageId).toBeTruthy();
+    expect(envelope.data.versions.count).toBeGreaterThanOrEqual(0);
+  }, 60_000);
+
+  test('tokens streams entries as JSON and CSS variables', async () => {
+    const jsonRun = await runCli(['tokens', testUrl], { env: withToken });
+    expect(jsonRun.code).toBe(0);
+    const entries = JSON.parse(jsonRun.stdout);
+    expect(Array.isArray(entries)).toBe(true);
+
+    const cssRun = await runCli(['tokens', testUrl, '--format', 'css'], {
+      env: withToken
+    });
+    expect(cssRun.code).toBe(0);
+    expect(cssRun.stdout).toContain(':root {');
+  }, 120_000);
+
+  // §11 M3 DoD: assets --download re-run is fully idempotent (all skipped).
+  test('assets --download twice: second run is all skipped', async () => {
+    const outDir = join(m3Dir, 'slices');
+    const args = ['assets', testUrl, '--download', '-o', outDir, '--json'];
+    const first = await runCli(args, { env: withToken });
+    expect(first.code).toBe(0);
+    const envelope1 = JSON.parse(first.stdout);
+    expect(envelope1.ok).toBe(true);
+    expect(envelope1.data.summary.failed).toBe(0);
+    expect(envelope1.data.summary.written).toBe(envelope1.data.summary.total);
+
+    const second = await runCli(args, { env: withToken });
+    expect(second.code).toBe(0);
+    const envelope2 = JSON.parse(second.stdout);
+    expect(envelope2.data.summary.skipped).toBe(envelope2.data.summary.total);
+    expect(envelope2.data.summary.written).toBe(0);
+    expect(envelope2.data.summary.overwritten).toBe(0);
+  }, 240_000);
+
+  // §11 M3 DoD: preview lands as a real PNG (magic bytes), idempotently.
+  test('preview -o <file> writes a valid PNG; -o - streams raw bytes', async () => {
+    const file = join(m3Dir, 'preview.png');
+    const result = await runCli(['preview', testUrl, '-o', file, '--json'], {
+      env: withToken
+    });
+    expect(result.code).toBe(0);
+    const envelope = JSON.parse(result.stdout);
+    expect(envelope.ok).toBe(true);
+    expect(envelope.data.status).toBe('written');
+    const magic = readFileSync(file).subarray(0, 4);
+    expect([...magic]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+
+    // -o -: PNG bytes on stdout, no envelope.
+    const streamed = await runCli(['preview', testUrl, '-o', '-'], {
+      env: withToken
+    });
+    expect(streamed.code).toBe(0);
+    expect([...streamed.stdoutBuf.subarray(0, 4)]).toEqual([
+      0x89, 0x50, 0x4e, 0x47
+    ]);
+
+    // second file run: skipped (content hash identical).
+    const again = await runCli(['preview', testUrl, '-o', file, '--json'], {
+      env: withToken
+    });
+    expect(JSON.parse(again.stdout).data.status).toBe('skipped');
+  }, 240_000);
+
+  // §11 M3 DoD: auth 三件套 against the real API.
+  test('auth set --token-stdin + status + test round-trip', async () => {
+    const xdg = join(m3Dir, 'xdg');
+    const env = { XDG_CONFIG_HOME: xdg };
+
+    const set = await runCli(['auth', 'set', '--token-stdin', '--json'], {
+      env,
+      input: `${lanhuToken}\n`
+    });
+    expect(set.code).toBe(0);
+    const setEnvelope = JSON.parse(set.stdout);
+    expect(setEnvelope.data.updated).toEqual(['LANHU_TOKEN']);
+    // the token value never leaks into any stream
+    expect(set.stdout).not.toContain(lanhuToken);
+    expect(set.stderr).not.toContain(lanhuToken);
+
+    const status = await runCli(['auth', 'status', '--json'], { env });
+    expect(status.code).toBe(0);
+    const statusEnvelope = JSON.parse(status.stdout);
+    expect(statusEnvelope.data.token.configured).toBe(true);
+    expect(statusEnvelope.data.token.source).toBe('user-config');
+    expect(status.stdout).not.toContain(lanhuToken);
+
+    // auth test uses the user-config credential written above.
+    const test_ = await runCli(['auth', 'test', testUrl, '--json'], { env });
+    expect(test_.code).toBe(0);
+    const testEnvelope = JSON.parse(test_.stdout);
+    expect(testEnvelope.data.ok).toBe(true);
+    expect(testEnvelope.data.checkedAt).toBeTruthy();
+  }, 120_000);
+
+  test('doctor passes with a configured token (exit 0)', async () => {
+    const result = await runCli(['doctor', '--json'], { env: withToken });
+    expect(result.code).toBe(0);
+    const envelope = JSON.parse(result.stdout);
+    expect(envelope.data.ok).toBe(true);
+    expect(envelope.data.checks.length).toBeGreaterThanOrEqual(6);
+  }, 60_000);
+
+  // §11 M3 DoD: --keep-going partial failure -> exit 9 + NDJSON details.
+  test('meta --stdin --keep-going with one bad URL exits 9 with NDJSON', async () => {
+    const input = `${testUrl}\ntid=only-a-tid\n`;
+    const result = await runCli(['meta', '--stdin', '--keep-going'], {
+      env: withToken,
+      input
+    });
+    expect(result.code).toBe(9);
+
+    const lines = result.stdout
+      .split('\n')
+      .filter(line => line.trim())
+      .map(line => JSON.parse(line));
+    expect(lines).toHaveLength(2);
+    expect(lines[0].ok).toBe(true);
+    expect(lines[0].input).toBe(testUrl);
+    expect(lines[1].ok).toBe(false);
+    expect(lines[1].input).toBe('tid=only-a-tid');
+    expect(lines[1].error.code).toMatch(/^URL_/);
+    expect(result.stderr).toContain('"total":2');
+    expect(result.stderr).toContain('"failed":1');
+  }, 120_000);
+
+  test('--stdin conflicts with a positional url (exit 2)', async () => {
+    const result = await runCli(['meta', testUrl, '--stdin'], {
+      env: withToken,
+      input: ''
+    });
+    expect(result.code).toBe(2);
+  });
 });

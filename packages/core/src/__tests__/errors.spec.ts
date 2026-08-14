@@ -37,6 +37,11 @@ const EXPECTED: Record<
   TOKENS_UNAVAILABLE: { exitClass: 0, severity: 'degraded', retryable: false },
   PREVIEW_UNAVAILABLE: { exitClass: 0, severity: 'degraded', retryable: true },
   TAILWIND_FALLBACK: { exitClass: 0, severity: 'degraded', retryable: false },
+  ASSET_DOWNLOAD_FAILED: {
+    exitClass: 0,
+    severity: 'degraded',
+    retryable: true
+  },
   UNKNOWN: { exitClass: 1, severity: 'fatal', retryable: false }
 };
 

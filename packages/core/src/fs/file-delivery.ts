@@ -86,7 +86,8 @@ function sha256(data: Buffer): string {
 }
 
 // Write `body` to `filePath` idempotently and report the resulting state.
-async function writeFileIdempotent(
+// Exported for reuse by the asset downloader and `preview -o <file>`.
+export async function writeFileIdempotent(
   filePath: string,
   body: Buffer,
   force: boolean
