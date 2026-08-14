@@ -27,7 +27,7 @@
 ```text
 请为我全局安装 lanhu-context（不要 clone 任何源码仓库）：
 1. npm i -g @lanhu-context/cli，然后运行 lanhu doctor 直到退出码为 0（凭据问题用 lanhu auth set 配置 LANHU_TOKEN）；
-2. 运行 npx skills add DaYePython/lanhu-context --global 全局安装 skill；如果该方式不适用于你，就把 lanhu-context-cli skill 装到你自己的全局技能/规则目录（如 Claude Code 的 ~/.claude/skills、Codex 的 ~/.codex/AGENTS.md 等）；
+2. 运行 npx skills add DaYePython/lanhu-context --global -y -a <你自己对应的 agent 名> 全局安装 skill（用 -a 只装给你自己，避免向不支持全局安装的 agent 报错）；如果该方式不适用于你，就把 lanhu-context-cli skill 装到你自己的全局技能/规则目录（如 Claude Code 的 ~/.claude/skills、Codex 的 ~/.codex/AGENTS.md 等）；
 3. 安装后向我汇报 doctor 结果和 skill 安装位置。
 ```
 
@@ -37,7 +37,7 @@
 请在当前项目内安装 lanhu-context（不要 clone 任何源码仓库，不要全局安装）：
 1. npm i -D @lanhu-context/cli；之后所有 lanhu 命令都要带前缀执行：npx lanhu <command>（或封装进 package.json scripts 后用 npm run 调用）；
 2. 运行 npx lanhu doctor 直到退出码为 0（凭据问题用 npx lanhu auth set 配置 LANHU_TOKEN，写入项目 .env.local 并确认已被 gitignore）；
-3. 运行 npx skills add DaYePython/lanhu-context 安装 skill（默认即项目级）；如果该方式不适用于你，就把 lanhu-context-cli skill 装到本项目的技能/规则目录（如 .claude/skills、.cursor/rules 等），并在 skill 用法中注明命令需用 npx lanhu 前缀；
+3. 运行 npx skills add DaYePython/lanhu-context -y -a <你自己对应的 agent 名> 安装 skill（默认即项目级）；如果该方式不适用于你，就把 lanhu-context-cli skill 装到本项目的技能/规则目录（如 .claude/skills、.cursor/rules 等），并在 skill 用法中注明命令需用 npx lanhu 前缀；
 4. 安装后向我汇报 doctor 结果和 skill 安装位置。
 ```
 
@@ -57,7 +57,7 @@ lanhu auth set          # 从 stdin 读 token，不落命令行
 lanhu auth test "$URL"  # exit 0 = token 有效
 ```
 
-要让 Agent 学会驱动 CLI，用 [find-skills](https://github.com/vercel-labs/skills) 把本仓 skills 装到你的 Agent（默认项目级，加 `--global` 全局安装）：
+要让 Agent 学会驱动 CLI，用 [find-skills](https://github.com/vercel-labs/skills) 把本仓 skills 装到你的 Agent（默认项目级，加 `--global` 全局安装；`-a <agent>` 指定目标 agent，部分 agent 不支持全局安装会标 ✗ 跳过）：
 
 ```bash
 npx skills add DaYePython/lanhu-context
