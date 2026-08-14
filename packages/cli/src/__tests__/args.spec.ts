@@ -3,7 +3,6 @@
 import { LanhuError } from '@lanhu-context/core';
 import { parseArgs } from 'citty';
 import {
-  batchArgs,
   globalArgs,
   toConcurrency,
   toConfigFlags,
@@ -105,18 +104,7 @@ describe('transform flags', () => {
   });
 });
 
-describe('M3 flags: batch / format / concurrency', () => {
-  test('--stdin and --keep-going default to false and parse as booleans', () => {
-    expect(parseArgs([], batchArgs)).toMatchObject({
-      stdin: false,
-      'keep-going': false
-    });
-    expect(parseArgs(['--stdin', '--keep-going'], batchArgs)).toMatchObject({
-      stdin: true,
-      'keep-going': true
-    });
-  });
-
+describe('M3 flags: format / concurrency', () => {
   test('toTokensFormat accepts json (default) and css, rejects the rest', () => {
     expect(toTokensFormat({ _: [] })).toBe('json');
     expect(toTokensFormat({ _: [], format: 'json' })).toBe('json');

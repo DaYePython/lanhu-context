@@ -17,8 +17,8 @@ export const htmlCommand = defineCommand({
   meta: {
     name: 'html',
     description: [
-      'DDS schema → HTML+CSS（或 Tailwind），stdout 直出 HTML（产物流）。',
-      '传 - 时从 stdin 读取 schema JSON 做离线转换，不请求蓝湖 API。',
+      '把设计稿转换为 HTML+CSS（或 Tailwind）并输出到 stdout。',
+      '传 - 时从 stdin 读取 schema JSON 做离线转换，不请求蓝湖 API、不需要 token。',
       '',
       '示例:',
       '  lanhu html "$URL" > page.html',

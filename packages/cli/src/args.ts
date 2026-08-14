@@ -38,12 +38,13 @@ export const globalArgs = {
   cwd: {
     type: 'string',
     valueHint: 'path',
-    description: '工作目录锚点（先于 env 加载与相对路径解析生效）'
+    description: '指定工作目录：env 文件查找与相对路径都以它为基准'
   },
   json: {
     type: 'boolean',
     default: false,
-    description: '输出结构化 envelope JSON（报告类命令在无 TTY 时自动开启）'
+    description:
+      '以统一 JSON 结构输出结果（含 ok/data/error/warnings 字段；输出报告的命令在 stdout 接管道或重定向时自动开启）'
   },
   quiet: {
     type: 'boolean',
@@ -64,7 +65,7 @@ export const globalArgs = {
   strict: {
     type: 'boolean',
     default: false,
-    description: '任何 warning 升级为失败（退出码 8，CI 用）'
+    description: '把所有 warning 当作失败处理（退出码 8），适合 CI 严格把关'
   },
   lang: {
     type: 'string',
@@ -91,37 +92,23 @@ export const transformArgs = {
   'unit-scale': {
     type: 'string',
     valueHint: 'n',
-    description: '全局尺寸倍率（如 2x 稿用 0.5）'
+    description: '输出尺寸的缩放倍数（设计稿是 2 倍图时用 0.5 得到 1 倍尺寸）'
   },
   'skip-slices': {
     type: 'boolean',
     default: false,
-    description: '跳过切图定位与下载映射'
+    description:
+      '不处理切图：跳过切图定位与下载清单，图片保持蓝湖远程 URL（只看布局时更快）'
   },
   'assets-dir': {
     type: 'string',
     valueHint: 'path',
-    description: '映射中的本地图片路径前缀（默认 ./src/assets/<设计稿名>）'
+    description:
+      '生成代码里图片引用的本地路径前缀（默认 ./src/assets/<设计稿名>）'
   }
 } as const satisfies ArgsDef;
 
 export type GlobalArgs = ParsedArgs<typeof globalArgs>;
-
-// --stdin batch mode flags (§5.1) — only on commands with a batchItem handler.
-export const batchArgs = {
-  stdin: {
-    type: 'boolean',
-    default: false,
-    description:
-      '批处理：从 stdin 逐行读 URL（或 NDJSON {"url":...}），stdout 逐条输出 envelope NDJSON；与位置参数/--inline 互斥'
-  },
-  'keep-going': {
-    type: 'boolean',
-    default: false,
-    description:
-      '批处理单条失败不中断（默认首败即停）；部分失败时整体退出码 9，明细看 stdout NDJSON 的 ok:false 行'
-  }
-} as const satisfies ArgsDef;
 
 export function toOutputOption(args: AnyParsedArgs): string | undefined {
   const value = args.output;

@@ -6,12 +6,7 @@ import {
   writeDesignFiles
 } from '@lanhu-context/core';
 import { defineCommand } from 'citty';
-import {
-  batchArgs,
-  globalArgs,
-  toTransformOptions,
-  transformArgs
-} from '../args';
+import { globalArgs, toTransformOptions, transformArgs } from '../args';
 import { createClient, requireUrlArg } from '../lib';
 import { executeCommand, type RunnerContext } from '../runner';
 
@@ -22,8 +17,8 @@ interface DeliveredFile {
   status: string;
 }
 
-// Files-mode pipeline shared by the single-run handler and --stdin batch
-// mode: compose the context, write context.md (+preview.png), report.
+// Files-mode pipeline: compose the context, write context.md (+preview.png),
+// report the delivered files.
 async function composeAndDeliver(ctx: RunnerContext, url: string) {
   const { args } = ctx;
   const transform = toTransformOptions(args);
@@ -96,14 +91,13 @@ export const contextCommand = defineCommand({
   meta: {
     name: 'context',
     description: [
-      '复合命令：一次产出 context.md（HTML + 切图映射 + Design Tokens + 实现指引）与 preview.png，',
-      '默认落盘到 --out-dir 并输出文件清单报告；--inline 时 stdout 直出 context 正文（摘要走 stderr）。',
+      '一条命令产出完整实现上下文：context.md（HTML + 切图映射 + Design Tokens + 实现指引）与 preview.png，',
+      '默认写入 --out-dir 并输出文件清单；--inline 改为把 context 正文直接输出到 stdout（摘要走 stderr）。',
       '',
       '示例:',
       '  lanhu context "$URL" --json',
       '  lanhu context "$URL" --tailwind --tw-version 4 --out-dir .lanhu --force',
-      '  lanhu context "$URL" --inline | claude -p "按 context 实现这个页面"',
-      '  cat urls.txt | lanhu context --stdin --keep-going --out-dir .lanhu > report.ndjson'
+      '  lanhu context "$URL" --inline | claude -p "按 context 实现这个页面"'
     ].join('\n')
   },
   args: {
@@ -111,13 +105,13 @@ export const contextCommand = defineCommand({
       type: 'positional',
       required: false,
       valueHint: 'url',
-      description: '蓝湖设计稿完整 URL 或 query 串；批量用 --stdin'
+      description: '蓝湖设计稿完整 URL 或 query 串'
     },
     inline: {
       type: 'boolean',
       default: false,
       description:
-        'stdout 直接输出 context 正文（产物流；与 --json/--stdin 互斥）'
+        '不写文件，把 context 正文直接输出到 stdout（与 --json 互斥）'
     },
     'out-dir': {
       type: 'string',
@@ -127,11 +121,11 @@ export const contextCommand = defineCommand({
     force: {
       type: 'boolean',
       default: false,
-      description: '跳过内容 hash 比对，强制重写全部产物文件'
+      description:
+        '不比对已有文件内容，强制重写全部输出文件（默认内容相同的文件自动跳过）'
     },
     ...globalArgs,
-    ...transformArgs,
-    ...batchArgs
+    ...transformArgs
   },
   run: ({ args, rawArgs }) =>
     executeCommand({
@@ -209,9 +203,6 @@ export const contextCommand = defineCommand({
             return lines.join('\n');
           }
         };
-      },
-      batchItem: async (url, ctx) => ({
-        data: await composeAndDeliver(ctx, url)
-      })
+      }
     })
 });

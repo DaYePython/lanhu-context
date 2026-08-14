@@ -41,7 +41,7 @@ $ lanhu meta "$URL" --json
   2. 引导用户配置：交互 `lanhu auth set`；CI/脚本 `printf "%s\n" "$LANHU_TOKEN" | lanhu auth set --token-stdin`；或写 `<cwd>/.env.local`。
   3. 注意 env 文件默认取 `<cwd>/.env.local`——从别的目录运行时加 `--cwd <项目根>` 或 `--env-file <path>`。
 
-## exit 4 — 认证/权限/空结果（`AUTH_EXPIRED` / `ACCESS_DENIED` / `EMPTY_RESULT` / `DESIGN_NOT_FOUND`）
+## exit 4 — 认证/权限/空结果（`AUTH_EXPIRED` / `ACCESS_DENIED` / `EMPTY_RESULT` / `DESIGN_NOT_FOUND` / `TRANSCODE_NOT_ENABLED`）
 
 症状（实测，无效 token）：
 
@@ -54,10 +54,14 @@ $ lanhu meta "$URL" --token "<invalid>" --json
 - `AUTH_EXPIRED`：token 是浏览器 Cookie，随登录态过期。动作：引导用户重新登录蓝湖 → 复制整段 Cookie → `lanhu auth set` → `lanhu auth test "$URL" --json` 确认 `data.ok: true`。
 - `ACCESS_DENIED`：当前账号无该团队/项目/设计稿权限。动作：换账号或找管理员开权限，不要重试。
 - `DESIGN_NOT_FOUND`：image_id 在该项目下不存在。动作：核对 URL 指向的设计稿仍存在且账号可见。
-- `EMPTY_RESULT`（**HTTP 200 + null payload 三义性**）：蓝湖对"URL 不完整 / 无权限 / token 失效"三种情况都可能返回 200 + 空 result，无法从响应区分。**排查顺序固定**：
+- `EMPTY_RESULT`（**HTTP 200 + null payload 多义性**）：蓝湖对"URL 不完整 / 无权限 / token 失效"等情况都可能返回 200 + 空 result，无法从响应区分。**排查顺序固定（token → URL → 转码开关）**：
   1. 先 `lanhu auth test "$URL" --json`——token 失效会在这里现形（`AUTH_EXPIRED`）；
   2. token 有效再核对 URL：`lanhu parse "$URL" --json` 确认 tid/pid/image_id 三参数完整未截断；
-  3. 两者都过则大概率是权限问题，按 `ACCESS_DENIED` 处理。
+  3. 两者都过再确认该设计稿上传时是否开启了「设计图转代码」（DDS schema 路径上这种情况通常已单独报 `TRANSCODE_NOT_ENABLED`）；仍无解则大概率是权限问题，按 `ACCESS_DENIED` 处理。
+- `TRANSCODE_NOT_ENABLED`（**设计稿上传时未开启「设计图转代码」**）：
+  - 症状：`meta` 正常（设计稿存在、token 有效，`versions.latestHasSketchJson` 甚至可能为 true），但 `schema`/`html`/`context` 报 exit 4，message 含上游业务码 `10011 版本数据不存在`（DDS `/api/dds/image/store_schema_revise` 返回 HTTP 200 + 空 data）。
+  - 原因：该设计稿上传蓝湖时没有勾选「设计图转代码」，蓝湖从未生成结构数据——不是 token/URL/权限问题。
+  - 动作：引导用户在蓝湖删除该设计稿后重新上传并勾选「设计图转代码」，等转码完成后重试。**重试/换 token 无用**。
 
 ## exit 5 — 上游 API/网络（`UPSTREAM_TIMEOUT` / `UPSTREAM_ERROR` / `SCHEMA_FIELD_MISSING`）
 
@@ -74,7 +78,7 @@ $ lanhu meta "$URL" --timeout 1 --retries 0 --json
 
 ## exit 6 — 转换失败（`TRANSFORM_FAILED`）
 
-- 症状：schema → HTML 转换抛异常（注意：Tailwind 转换失败**不在此列**，那是 degraded `TAILWIND_FALLBACK`，exit 0 + 保留原 HTML）。
+- 症状：schema → HTML 转换抛异常（注意：Tailwind 转换失败**不在此列**，那是 warning `TAILWIND_FALLBACK`——附属转换缺失但核心 HTML 可用，exit 0 + 保留原 HTML）。
 - 动作：`lanhu schema "$URL" > page.schema.json` 落盘原始 schema 复查；`lanhu html - < page.schema.json --verbose` 离线复现；仍失败则带 schema 与 URL 报告。
 
 ## exit 7 — 本地 IO（`IO_WRITE_FAILED`）
@@ -92,32 +96,14 @@ $ lanhu meta "$URL" --timeout 1 --retries 0 --json
 # exit 8
 ```
 
-- 原因：不是"真失败"——是 degraded warning（`TOKENS_UNAVAILABLE` / `PREVIEW_UNAVAILABLE` / `TAILWIND_FALLBACK` / `ASSET_DOWNLOAD_FAILED`）被 `--strict` 拦截。
-- 动作：看 stderr 列出的 warning 码。该降级可接受 → 去掉 `--strict` 重跑（exit 0 + `warnings[]`）；不可接受 → 按各 warning 的 hint 解决根因（如 tokens 缺失需在蓝湖确认版本转码）。
+- 原因：不是"真失败"——是"附属内容缺失但核心结果可用"的 warning（`TOKENS_UNAVAILABLE` / `PREVIEW_UNAVAILABLE` / `TAILWIND_FALLBACK` / `ASSET_DOWNLOAD_FAILED`）被 `--strict` 拦截升级。
+- 动作：看 stderr 列出的 warning 码。该缺失可接受 → 去掉 `--strict` 重跑（exit 0 + `warnings[]`）；不可接受 → 按各 warning 的 hint 解决根因（如 tokens 缺失需在蓝湖确认版本转码）。
 
-## exit 9 — 批处理部分失败（`BATCH_PARTIAL`）
-
-症状（实测，2 行输入混 1 条坏 URL）：
-
-```text
-$ cat urls_mixed.txt | lanhu context --stdin --keep-going --json --out-dir .lanhu.local > report.ndjson
- ERROR  URL_MISSING_PID: URL parsing failed: missing required param pid (project_id)
-ℹ batch: {"total":2,"ok":1,"failed":1}
-# exit 9
-```
-
-- 原因：`--keep-going` 下部分条目失败；成功条目已正常落盘。
-- 动作：
-  1. `jq -c 'select(.ok == false) | {input, code: .error.code}' report.ndjson` 定位失败行；
-  2. 按每行 `error.code` 回到本文件对应小节处理（本例 exit 2 类：修 URL）；
-  3. 只把修好的 `input` 重新喂给 `--stdin`——成功条目幂等，整表重跑也只会 `skipped`。
-- 全失败时不是 9，而是取主导错误类别码（如全部 URL 坏 → exit 2）。
-
-## 附：degraded warning 码速查（exit 0，不是失败）
+## 附：warning 码速查（exit 0，附属内容缺失但核心结果可用，不是失败）
 
 | code | 含义 | 补救 |
 | --- | --- | --- |
 | `TOKENS_UNAVAILABLE` | Sketch JSON 缺失/不可读或无高风险 token，tokens 为空 | 需要 tokens 时在蓝湖确认该版本已完成转码；否则如实告知用户后继续 |
 | `PREVIEW_UNAVAILABLE` | 预览图下载失败（retryable） | `lanhu preview "$URL" -o preview.png` 单独重试 |
 | `TAILWIND_FALLBACK` | Tailwind 转换失败，保留原 HTML+CSS | 直接用原 CSS，或换 `--tw-version` 重试 |
-| `ASSET_DOWNLOAD_FAILED` | 部分切图下载失败，其余已交付（retryable） | 重跑 `lanhu assets "$URL" --download`（幂等，只补失败项） |
+| `ASSET_DOWNLOAD_FAILED` | 部分切图下载失败，其余已交付（retryable） | 重跑 `lanhu assets "$URL" --download`（重复执行安全：已下载且内容相同的自动跳过，只补失败项） |

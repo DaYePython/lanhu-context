@@ -7,8 +7,7 @@
 //
 // Exit classes (DESIGN.md §6.2): 1 unknown, 2 usage/URL, 3 config/credentials,
 // 4 auth/permission/empty result, 5 upstream API/network, 6 transform, 7 local IO,
-// 8 reserved for --strict escalation (assigned by the CLI layer),
-// 9 batch partial failure (--keep-going).
+// 8 reserved for --strict escalation (assigned by the CLI layer).
 
 export type LanhuSeverity = 'fatal' | 'degraded' | 'notice';
 
@@ -81,7 +80,13 @@ export const ERROR_REGISTRY = {
     severity: 'fatal',
     exitClass: 4,
     retryable: false,
-    hint: 'Lanhu returned HTTP 200 with an empty payload — this can mean an incomplete URL, missing access, or an expired token. Check the token first, then verify tid/pid/image_id are complete and untruncated.'
+    hint: 'Lanhu returned HTTP 200 with an empty payload — this can mean an incomplete URL, missing access, or an expired token. Troubleshoot in order: check the token first, then verify tid/pid/image_id are complete and untruncated, then confirm the design was uploaded with「设计图转代码」(design-to-code) enabled.'
+  },
+  TRANSCODE_NOT_ENABLED: {
+    severity: 'fatal',
+    exitClass: 4,
+    retryable: false,
+    hint: 'This design was uploaded to Lanhu without the「设计图转代码」(design-to-code) option enabled, so Lanhu never generated its structure data. Delete the design in Lanhu, re-upload it with「设计图转代码」checked, wait for transcoding to finish, then retry.'
   },
   DESIGN_NOT_FOUND: {
     severity: 'fatal',
@@ -146,13 +151,6 @@ export const ERROR_REGISTRY = {
     exitClass: 0,
     retryable: true,
     hint: 'One or more slice assets failed to download; the rest were delivered. Re-run `lanhu assets --download` (idempotent: finished files are skipped), or use --strict to fail fast.'
-  },
-  // --- batch partial failure (exit class 9) ---
-  BATCH_PARTIAL: {
-    severity: 'fatal',
-    exitClass: 9,
-    retryable: false,
-    hint: 'Some batch entries failed while --keep-going was active. Parse the NDJSON output and inspect the lines with ok:false; the stderr summary has {total, ok, failed}.'
   },
   // --- unknown / internal (exit class 1) ---
   UNKNOWN: {

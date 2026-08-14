@@ -59,7 +59,7 @@
 | 原则 | 落地方式 |
 | --- | --- |
 | 明确命令与操作 | 每阶段一个动词命令：`parse`/`meta`/`schema`/`html`/`tokens`/`assets`/`preview`/`context` |
-| 结构化输出 | stdout 只放数据；`--json` 统一 envelope；批量场景 NDJSON |
+| 结构化输出 | stdout 只放数据；`--json` 统一 envelope |
 | 可操作错误信息 | 结构化错误 `{code, severity, message, hint}`，每个 code 附修复建议 |
 | 非交互自动化 | 无 TTY 时零交互；所有输入可 flag/env/stdin 提供（凭据走 `auth set --token-stdin`）；无确认式交互——覆盖等动作以显式 `--force` 表达意图，不设 `--yes` |
 | 安全与幂等 | 导出/下载默认幂等（内容寻址跳过已存在）；`--dry-run`；无破坏性命令；token 永不回显 |
@@ -88,7 +88,7 @@ lanhu-context/
 │   ├── cli/                     # @lanhu-context/cli —— bin: `lanhu`
 │   │   └── src/
 │   │       ├── commands/        # 一命令一文件：parse/meta/schema/html/tokens/assets/preview/context/auth/doctor/mcp
-│   │       ├── io/              # stdout 数据写出（json/md/html/css 格式器）、stderr 诊断、NDJSON、TTY 检测
+│   │       ├── io/              # stdout 数据写出（json/md/html/css 格式器）、stderr 诊断、TTY 检测
 │   │       ├── config/          # c12 加载 lanhu.config + env + flags 合并，凭据解析
 │   │       └── exit.ts          # severity/code → 退出码映射
 │   └── mcp/                     # @lanhu-context/mcp —— MCP 兼容层（预留）
@@ -157,13 +157,11 @@ bin 名建议注册两个：`lanhu`（日常）与 `lanhu-context`（防冲突�
 --json                  结构化 envelope 输出（报告类命令无 TTY 时自动开启；产物流命令见 §5 通道规则）
 --format <fmt>          按命令支持 json|md|html|css|table
 -o, --output <path|->   写文件或 stdout（显式 -o 声明的产物通道不受自动 --json 影响，见 §5）
---stdin                 批处理模式：从 stdin 逐行读 URL/NDJSON，逐条输出 NDJSON 结果
 --force                 跳过内容比对，强制重写全部产物文件（默认：内容一致跳过、不一致覆盖）
 -q, --quiet             stderr 只留 error
 --verbose               stderr 输出 debug（含各阶段耗时）
 --no-color              禁用颜色（NO_COLOR env 亦生效）
 --strict                warning 升级为 fatal（CI 用）
---keep-going            批量模式下单条失败不中断（部分失败整体退出码 9，见 §6.2）
 --dry-run               只报告将执行的动作、不写盘（支持：context、assets --download、preview -o <file>）
 --lang <en-US|zh-CN>    指引文本语言（上游 --prompt-lang 更名，保留别名）
 --version               输出版本；与 --json 组合输出 {name, version, node}
@@ -187,9 +185,9 @@ bin 名建议注册两个：`lanhu`（日常）与 `lanhu-context`（防冲突�
 
 ### 4.3 输入约定
 
-- 记法约定：`<x>` 必选、`[x]` 可选、`-` 表示从 stdin 读；批处理模式（`--stdin`）下省略位置参数。
+- 记法约定：`<x>` 必选、`[x]` 可选、`-` 表示从 stdin 读。
 - 位置参数接受**完整 URL、纯 query 串（`tid=..&pid=..&image_id=..`）或 `-`（stdin）**，与上游 parseLanhuUrl 的三形态一致。
-- stdin 支持两种：单个 URL/schema JSON（配合 `-`）；**多行 URL / NDJSON 批量**（`--stdin` 批处理模式，逐条输出 NDJSON 结果）。
+- stdin 用于单条输入（配合 `-`）：`parse`/`meta` 读单个 URL，`html` 读 schema JSON。
 - 所有命令在无 TTY 时不发起任何交互。
 
 ### 4.4 管道组合示例
@@ -207,9 +205,6 @@ lanhu tokens "$URL" --format css > src/styles/design-tokens.css
 
 # 下载全部切图到项目资产目录（幂等：已存在且内容 hash 一致则跳过）
 lanhu assets "$URL" --download -o src/assets/lanhu --concurrency 4
-
-# 批量导出一个项目的多张设计稿
-cat urls.txt | lanhu context --stdin --keep-going --out-dir .lanhu --json > report.ndjson
 
 # 一步到位（等价上游 export --inline）
 lanhu context "$URL" --inline | claude -p "按 context 实现这个页面"
@@ -274,7 +269,6 @@ lanhu context "$URL" --inline | claude -p "按 context 实现这个页面"
 ```
 
 - 人类模式（TTY 且未指定 `--json`）：stdout 输出同样数据的可读排版，错误与警告经 consola 彩色输出到 stderr；两种模式数据字段一一对应。
-- 批处理（`--stdin`）：stdout 逐条 NDJSON，成功与失败条目都是完整 envelope + `input` 回显字段——与单条 `--json` 的通道语义完全一致；stderr 输出汇总 `{total, ok, failed}`。整体退出码：全成功 0，部分失败 9，全失败取主导错误类别码（§6.2）。
 
 ### 5.2 幂等与安全
 
@@ -306,14 +300,13 @@ lanhu context "$URL" --inline | claude -p "按 context 实现这个页面"
 | 1 | 未知/内部错误 | 未分类异常（bug） |
 | 2 | 用法错误 | 参数非法、URL 解析失败（`URL_MISSING_TID` 等） |
 | 3 | 配置/凭据缺失 | token 未提供、env 文件不存在、`--cwd` 无效 |
-| 4 | 认证/权限失败 | token 过期、无团队/项目权限、API 空 result（`AUTH_EXPIRED` / `ACCESS_DENIED` / `EMPTY_RESULT`） |
+| 4 | 认证/权限失败 | token 过期、无团队/项目权限、API 空 result（`AUTH_EXPIRED` / `ACCESS_DENIED` / `EMPTY_RESULT`）、设计稿上传未开启「设计图转代码」（`TRANSCODE_NOT_ENABLED`） |
 | 5 | 上游 API/网络 | 超时、5xx、`data_resource_url`/`latest_version`/`json_url` 缺失（`retryable: true` 的都在此类） |
 | 6 | 转换失败 | schema→HTML 异常（Tailwind 回退不算，记 degraded） |
 | 7 | 本地 IO | 落盘/下载写文件失败 |
 | 8 | `--strict` 下由 warning 升级 | 明确区分"真失败"与"严格模式拦截" |
-| 9 | 批处理部分失败 | `--keep-going` 下部分条目失败（全失败时取主导错误类别码）；明细在 stdout NDJSON 的 `ok:false` 行，汇总在 stderr |
 
-错误码在 `core/errors.ts` 统一注册：`code → { exitClass, severity, retryable, hintTemplate }`。蓝湖"HTTP 200 + null payload"的歧义（URL 不完整 / 无权限 / token 失效三种可能）保留上游的合并提示，但拆出 `EMPTY_RESULT` 码并在 hint 中给出排查顺序（先 `lanhu auth test`，再核对 URL 完整性）。
+错误码在 `core/errors.ts` 统一注册：`code → { exitClass, severity, retryable, hintTemplate }`。蓝湖"HTTP 200 + null payload"的歧义（URL 不完整 / 无权限 / token 失效等可能）保留上游的合并提示，但拆出 `EMPTY_RESULT` 码并在 hint 中给出排查顺序（token → URL → 转码开关：先 `lanhu auth test`，再核对 URL 完整性，最后确认上传时开启了「设计图转代码」）；DDS schema 路径上业务码 `10011 版本数据不存在`（上传未开启「设计图转代码」）单独拆出 `TRANSCODE_NOT_ENABLED` 码，hint 直接引导重新上传并勾选该选项。
 
 ### 6.3 重试策略
 
@@ -344,7 +337,8 @@ lanhu context "$URL" --inline | claude -p "按 context 实现这个页面"
 - 一切结论给可复制运行的命令与真实输出示例（envelope JSON、退出码），不用抽象描述代替代码块；
 - 排障按退出码/错误码索引（工程师从报错反查），不按功能章节；
 - 约定优先于解释：先给推荐命令序列，再在需要处一句话说明为什么；
-- 术语保持代码同名（flag、错误码、字段名不翻译），叙述用中文。
+- 术语保持代码同名（flag、错误码、字段名不翻译），叙述用中文；
+- 叙述性表述通俗化，与 CLI `--help` 文案同一套说法："幂等""产物流/报告类""降级"等行话替换为大白话（或首次出现时先一句大白话解释），文档引用的 help/输出示例必须与实际运行结果一致。
 
 **触发设计（frontmatter description）**——skill 能否被 Agent 正确调起取决于此，与内容质量同等重要：
 
@@ -360,8 +354,7 @@ lanhu context "$URL" --inline | claude -p "按 context 实现这个页面"
 | 从设计稿实现页面（默认） | `lanhu auth test` → 读项目判断 Tailwind → `lanhu context <url> --json`（按项目加 `--tailwind --tw-version N`）→ 读 context.md → `lanhu assets <url> --download -o <项目资产目录>` → 写业务代码 |
 | 只分析布局结构 | `lanhu html <url> --skip-slices`（stdout 直接进上下文，不落盘） |
 | 建立/核对设计系统 | `lanhu tokens <url> --format css` 与项目现有变量 diff |
-| 批量导出整个项目 | URL 列表 → `lanhu context --stdin --keep-going --json`，逐行解析 NDJSON |
-| 排障 | 按退出码分派：2→检查 URL 参数完整性；3/4→`lanhu auth test` + 重取 Cookie；5→`--retries`/`--timeout`；9→逐行解析 NDJSON 定位 `ok:false` 条目；其余→`lanhu doctor` |
+| 排障 | 按退出码分派：2→检查 URL 参数完整性；3/4→`lanhu auth test` + 重取 Cookie；5→`--retries`/`--timeout`；其余→`lanhu doctor` |
 
 SKILL.md 行为约束（沿用上游技能的纪律并适配新 CLI）：
 
@@ -402,7 +395,7 @@ references/ 保留：`cli-reference.md`（参数表）、`pipeline.md`（管道�
    - DoD：迁移单测全绿；错误码表专测覆盖 code → 退出码类别/severity/retryable 全映射；core 零终端/协议依赖（依赖检查通过）。
 2. **M2 CLI 骨架**：citty 命令树 + io/exit + `parse/schema/html/context` 四命令跑通管道；集成测试复用 `LANHU_TEST_URL` 模式。
    - DoD：§4.4 前两个管道示例对真实 URL 原样可执行；退出码 0/2/3/4/5 各有集成用例；§5 输出契约测试通过（报告类无 TTY 自动 `--json`、产物流原样直出、失败 envelope 走 stdout）。
-3. **M3 全命令**：`meta/tokens/assets/preview/auth/doctor`、批量 stdin、幂等下载。
-   - DoD：全部命令 `--help` 含可运行示例；`--keep-going` 部分失败退出码 9 + NDJSON 明细有测试；`assets --download` 二次执行全 `skipped`（幂等验证）；`auth` 三件套对真实 API 联通。
+3. **M3 全命令**：`meta/tokens/assets/preview/auth/doctor`、幂等下载。
+   - DoD：全部命令 `--help` 含可运行示例；`assets --download` 二次执行全 `skipped`（幂等验证）；`auth` 三件套对真实 API 联通。
 4. **M4 MCP 兼容层 + skills**：`packages/mcp` 与 `skills/lanhu-context-cli` + `skills/lanhu-context-mcp`；对照上游集成测试验证工具签名兼容。
    - DoD：`get_design_context` 入参/返回结构与上游对照测试通过（含 `--compat-strict` 回退语义）；SKILL.md 触发 description 就位，§8 五场景在 playground 各演练通过一次。

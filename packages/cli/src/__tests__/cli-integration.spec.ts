@@ -49,6 +49,10 @@ const envFile = enabled ? loadEnvLocal() : {};
 const lanhuToken = process.env.LANHU_TOKEN || envFile.LANHU_TOKEN || '';
 const ddsToken = process.env.DDS_TOKEN || envFile.DDS_TOKEN || '';
 const testUrl = process.env.LANHU_TEST_URL || envFile.LANHU_TEST_URL || '';
+// A real design uploaded WITHOUT「设计图转代码」— only ever provided via env
+// (it contains private project ids and must never be hardcoded).
+const untranscodedUrl =
+  process.env.LANHU_UNTRANSCODED_URL || envFile.LANHU_UNTRANSCODED_URL || '';
 
 interface CliResult {
   code: number;
@@ -191,6 +195,25 @@ describe.runIf(enabled)('CLI integration (RUN_INTEGRATION=1)', () => {
     );
   }, 60_000);
 
+  // Exit 4: a design uploaded without「设计图转代码」— meta is fine, but the
+  // DDS schema endpoint answers HTTP 200 + empty data (code 10011). Skipped
+  // unless LANHU_UNTRANSCODED_URL is provided via env/.env.local.
+  test.skipIf(!untranscodedUrl)(
+    'exit 4: design without 设计图转代码 is TRANSCODE_NOT_ENABLED',
+    async () => {
+      const result = await runCli(['schema', untranscodedUrl, '--json'], {
+        env: withToken
+      });
+      expect(result.code).toBe(4);
+      const envelope = JSON.parse(result.stdout);
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error.code).toBe('TRANSCODE_NOT_ENABLED');
+      expect(envelope.error.retryable).toBe(false);
+      expect(envelope.error.hint).toContain('设计图转代码');
+    },
+    60_000
+  );
+
   // Exit 5: real token but an impossible timeout -> retryable upstream error.
   test('exit 5: 1ms timeout surfaces UPSTREAM_TIMEOUT after retries', async () => {
     const result = await runCli(
@@ -266,7 +289,7 @@ describe.runIf(enabled)('CLI integration (RUN_INTEGRATION=1)', () => {
   }, 240_000);
 });
 
-// --- M3: meta/tokens/assets/preview/auth/doctor + --stdin batch (§11 M3 DoD) ---
+// --- M3: meta/tokens/assets/preview/auth/doctor (§11 M3 DoD) ---
 describe.runIf(enabled)('CLI integration M3 (RUN_INTEGRATION=1)', () => {
   let m3Dir = tmpdir();
 
@@ -417,35 +440,4 @@ describe.runIf(enabled)('CLI integration M3 (RUN_INTEGRATION=1)', () => {
     expect(envelope.data.ok).toBe(true);
     expect(envelope.data.checks.length).toBeGreaterThanOrEqual(6);
   }, 60_000);
-
-  // §11 M3 DoD: --keep-going partial failure -> exit 9 + NDJSON details.
-  test('meta --stdin --keep-going with one bad URL exits 9 with NDJSON', async () => {
-    const input = `${testUrl}\ntid=only-a-tid\n`;
-    const result = await runCli(['meta', '--stdin', '--keep-going'], {
-      env: withToken,
-      input
-    });
-    expect(result.code).toBe(9);
-
-    const lines = result.stdout
-      .split('\n')
-      .filter(line => line.trim())
-      .map(line => JSON.parse(line));
-    expect(lines).toHaveLength(2);
-    expect(lines[0].ok).toBe(true);
-    expect(lines[0].input).toBe(testUrl);
-    expect(lines[1].ok).toBe(false);
-    expect(lines[1].input).toBe('tid=only-a-tid');
-    expect(lines[1].error.code).toMatch(/^URL_/);
-    expect(result.stderr).toContain('"total":2');
-    expect(result.stderr).toContain('"failed":1');
-  }, 120_000);
-
-  test('--stdin conflicts with a positional url (exit 2)', async () => {
-    const result = await runCli(['meta', testUrl, '--stdin'], {
-      env: withToken,
-      input: ''
-    });
-    expect(result.code).toBe(2);
-  });
 });

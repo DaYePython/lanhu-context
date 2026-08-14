@@ -13,23 +13,14 @@
 // - failure envelopes go to stdout whenever JSON mode is in effect; the first
 //   failure signal is the non-zero exit code. Human diagnostics always go to
 //   stderr.
-// - batch mode (--stdin, §5.1): one full envelope per input line as NDJSON
-//   with an `input` echo field, summary {total, ok, failed} on stderr, and
-//   the §6.2 batch exit-code rules (0 / first-failure / 9 / dominant class).
 
 import type { Buffer } from 'node:buffer';
-import {
-  LanhuError,
-  type LanhuWarning,
-  toLanhuError
-} from '@lanhu-context/core';
+import { type LanhuWarning, toLanhuError } from '@lanhu-context/core';
 import type { ConsolaInstance } from 'consola';
 import { type AnyParsedArgs, toConfigFlags } from './args';
 import { type ResolvedConfig, resolveConfig } from './config/index';
 import { EXIT_OK, EXIT_STRICT, exitCodeForError, finishWith } from './exit';
-import { decideBatchExit, parseBatchLine } from './io/batch';
 import {
-  type Envelope,
   failureEnvelope,
   serializeEnvelope,
   strictFailureEnvelope,
@@ -37,7 +28,6 @@ import {
 } from './io/envelope';
 import { createLogger } from './io/logger';
 import { type CommandKind, shouldEmitJson, writeStdout } from './io/output';
-import { readStdin } from './io/stdin';
 
 export interface HandlerResult {
   /** Structured data — envelope `data` and the source for human rendering. */
@@ -76,8 +66,6 @@ export interface ExecuteOptions {
   /** Usage validation before config/handler; throw USAGE_ERROR here. */
   preValidate?: (args: AnyParsedArgs) => void;
   handler: (ctx: RunnerContext) => Promise<HandlerResult>;
-  /** Per-entry handler enabling `--stdin` batch mode for this command. */
-  batchItem?: (url: string, ctx: RunnerContext) => Promise<{ data: unknown }>;
 }
 
 export async function executeCommand(options: ExecuteOptions): Promise<void> {
@@ -100,7 +88,6 @@ export async function executeCommand(options: ExecuteOptions): Promise<void> {
 
   try {
     options.preValidate?.(args);
-    validateBatchFlags(options);
 
     // Deprecated alias notice (§10 compatibility discipline).
     if (rawArgs.includes('--tailwindcss')) {
@@ -125,11 +112,6 @@ export async function executeCommand(options: ExecuteOptions): Promise<void> {
         }
       }
     };
-
-    if (args.stdin === true) {
-      await runBatch(options, ctx);
-      return;
-    }
 
     const result = await options.handler(ctx);
     const durationMs = Date.now() - started;
@@ -180,103 +162,4 @@ export async function executeCommand(options: ExecuteOptions): Promise<void> {
     }
     finishWith(exitCodeForError(err));
   }
-}
-
-// --stdin usage rules (§5.1): only commands with a batchItem handler support
-// it, and it is mutually exclusive with a positional url/`-` and --inline.
-function validateBatchFlags(options: ExecuteOptions): void {
-  const { args } = options;
-  if (args.stdin !== true) return;
-  if (!options.batchItem) {
-    throw new LanhuError(
-      'USAGE_ERROR',
-      `\`${options.command}\` does not support --stdin batch mode (supported: parse, meta, context)`
-    );
-  }
-  if (typeof args.url === 'string' && args.url !== '') {
-    throw new LanhuError(
-      'USAGE_ERROR',
-      '--stdin 与位置参数（url 或 -）互斥：批处理模式从 stdin 逐行读取 URL'
-    );
-  }
-  if (args.inline === true) {
-    throw new LanhuError(
-      'USAGE_ERROR',
-      '--stdin 与 --inline 互斥：批处理的 stdout 是 NDJSON envelope 流'
-    );
-  }
-}
-
-// Batch executor (§5.1): NDJSON envelopes on stdout, summary on stderr.
-async function runBatch(
-  options: ExecuteOptions,
-  baseCtx: RunnerContext
-): Promise<void> {
-  const { args, command } = { args: options.args, command: options.command };
-  const logger = baseCtx.logger;
-  const keepGoing = args['keep-going'] === true;
-  const batchItem = options.batchItem;
-  if (!batchItem) return; // validated earlier
-
-  const raw = await readStdin();
-  const lines = raw.split('\n');
-
-  let ok = 0;
-  const failureCodes: number[] = [];
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    const startedAt = Date.now();
-    const itemWarnings: LanhuWarning[] = [];
-    let envelope: Envelope & { input: string };
-    let itemExit = EXIT_OK;
-
-    try {
-      const url = parseBatchLine(line);
-      const itemCtx: RunnerContext = { ...baseCtx, warnings: itemWarnings };
-      const { data } = await batchItem(url, itemCtx);
-
-      for (const w of itemWarnings) {
-        logger.warn(`${w.code}: ${w.message}`);
-      }
-      if (args.strict === true && itemWarnings.length > 0) {
-        envelope = {
-          ...strictFailureEnvelope(command, itemWarnings),
-          input: line
-        };
-        itemExit = EXIT_STRICT;
-      } else {
-        envelope = {
-          ...successEnvelope(
-            command,
-            data,
-            itemWarnings,
-            Date.now() - startedAt
-          ),
-          input: line
-        };
-      }
-    } catch (error) {
-      const err = toLanhuError(error);
-      logger.error(`${err.code}: ${err.message}`);
-      envelope = { ...failureEnvelope(command, err), input: line };
-      itemExit = exitCodeForError(err);
-    }
-
-    writeStdout(JSON.stringify(envelope));
-
-    if (itemExit === EXIT_OK) {
-      ok += 1;
-    } else {
-      failureCodes.push(itemExit);
-      if (!keepGoing) break;
-    }
-  }
-
-  const failed = failureCodes.length;
-  const total = ok + failed;
-  logger.info(`batch: ${JSON.stringify({ total, ok, failed })}`);
-  finishWith(decideBatchExit({ ok, failed, keepGoing, failureCodes }));
 }

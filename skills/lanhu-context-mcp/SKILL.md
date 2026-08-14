@@ -7,7 +7,7 @@ description: 蓝湖(Lanhu) MCP server 配置与排障：当用户要在 Claude C
 
 `lanhu mcp` 启动一个 MCP server，注册唯一工具 `get_design_context`，对外契约与上游 `lanhu-context-mcp` npm 包完全一致（工具名、入参 `{url}`、inline/files 两种 mode、resource_link、isError + STOP 错误文本）。内部走 `@lanhu-context/core` 的分级严重性管道，默认行为差异见下文 `--compat-strict`。
 
-CLI 直调（`lanhu context` / `lanhu html` 等原子命令、退出码、envelope、批处理）不在本 skill 范围，见 `lanhu-context-cli` skill。
+CLI 直调（`lanhu context` / `lanhu html` 等原子命令、退出码、envelope）不在本 skill 范围，见 `lanhu-context-cli` skill。
 
 ## 何时用 `lanhu mcp`，何时用 CLI
 
@@ -16,14 +16,14 @@ CLI 直调（`lanhu context` / `lanhu html` 等原子命令、退出码、envelo
 | Agent 能直接执行 shell 命令 | CLI 直调（`lanhu context <url> --json` 等）。原子命令 + 退出码 + envelope 比协议往返更省上下文，见 lanhu-context-cli skill |
 | MCP 客户端（Claude Code / Cursor / Codex / TRAE 等）内以工具形式消费 | `lanhu mcp` |
 | 已有基于上游 `lanhu-context-mcp` 包的客户端配置，想换到本仓实现 | `lanhu mcp`，按下方迁移对照表改配置 |
-| 批量导出、管道组合、CI | CLI（`--stdin` / `--keep-going`），MCP 无批处理语义 |
+| 管道组合、CI 集成 | CLI：退出码 + 统一 JSON 输出（envelope）好编排；MCP 只面向客户端内的工具调用 |
 
 ## 启动
 
 先确认凭据可用（token 解析链与 CLI 相同：`--token` > env `LANHU_TOKEN` > env 文件 > `lanhu.config.json` > 用户级配置）：
 
 ```bash
-lanhu auth test        # exit 0 = token 活性 OK；exit 3/4 先按 lanhu-context-cli skill 排障
+lanhu auth test        # exit 0 = token 有效；exit 3/4 先按 lanhu-context-cli skill 排障
 ```
 
 stdio（默认，MCP 客户端拉起子进程）：
@@ -115,9 +115,9 @@ claude mcp add --transport http lanhu http://127.0.0.1:5200/mcp
 - `inline`（默认）：`content` 数组依次为 `text(HTML+CSS/Tailwind)`、`text(切图映射, curl 命令)`（有切图时）、`text(Design Tokens)`（可提取时）、`text(实现指引)`、`image(preview.png base64)`（有预览图时）。
 - `files`：落盘到 `--out-dir` 下 `<设计稿名>-<imageId 前 8 位>/`，`content` 只含 `resource_link`（`file://` URI 的 `context.md`，有预览图时再加 `preview.png`）。产物大时选 files，避免 base64/HTML 撑爆客户端上下文。
 
-降级语义（与上游的行为差异，默认开启）：
+附属内容缺失时的处理（与上游的行为差异，默认开启）：
 
-- tokens 提取失败、预览图下载失败、Tailwind 转换回退 —— 核心 HTML 产物照常返回，调用不报错；差异记录在返回文本末尾的 `warnings:` 段（inline 附在指引段末尾，files 附在 `context.md` 末尾）：
+- tokens 提取失败、预览图下载失败、Tailwind 转换回退 —— 核心 HTML 产物照常返回，调用不报错；缺失项记录在返回文本末尾的 `warnings:` 段（inline 附在指引段末尾，files 附在 `context.md` 末尾）：
 
   ```text
   warnings:
@@ -153,7 +153,7 @@ URL 解析失败、token 失效、schema 拉取失败等致命错误在两种模
 
 工具契约不变项：工具名 `get_design_context`；入参 schema `{url: string}`（描述文本随 `--lang` 与上游同文案）；inline content 顺序；files 模式 resource_link（`context.md` + `preview.png`）；错误 isError + STOP 文本。客户端侧无需改任何工具调用代码。
 
-行为变更项只有一个：附属阶段失败默认降级为 `warnings:` 段（上文），`--compat-strict` 回退。
+行为变更项只有一个：附属内容缺失默认不整体报错、记入 `warnings:` 段（上文），`--compat-strict` 回退上游行为。
 
 ## 排障（按症状 → 退出码/错误码索引）
 
@@ -188,8 +188,9 @@ hint: The command was invoked with invalid arguments or conflicting flags. Run t
 | 文本特征 | 原因 → 动作 |
 | --- | --- |
 | `must contain a tid` / `pid` / `image_id` | URL 不完整 → 让用户从浏览器地址栏复制完整设计稿详情 URL |
-| `returned empty result` / `EMPTY_RESULT` 语义（HTTP 200 空 payload） | token 过期 / 无权限 / URL 不完整三者其一 → 先在终端跑 `lanhu auth test`（排 token），再核对 URL；token 过期则重新登录蓝湖取整段 Cookie 后重启 server |
-| `Failed to extract design tokens` / `Failed to download design preview`（仅 `--compat-strict` 下出现为错误） | 上游全停语义生效 → 去掉 `--compat-strict` 接受降级产出，或稍后重试 |
+| `returned empty result` / `EMPTY_RESULT` 语义（HTTP 200 空 payload） | token 过期 / 无权限 / URL 不完整其一 → 按 token → URL → 转码开关顺序排查：先在终端跑 `lanhu auth test`，再核对 URL；token 过期则重新登录蓝湖取整段 Cookie 后重启 server |
+| `TRANSCODE_NOT_ENABLED` / `版本数据不存在` | 设计稿上传时未开启「设计图转代码」，蓝湖没有结构数据 → 在蓝湖删除后重新上传并勾选「设计图转代码」，转码完成后重试；换 token/重试无用 |
+| `Failed to extract design tokens` / `Failed to download design preview`（仅 `--compat-strict` 下出现为错误） | 上游全停语义生效 → 去掉 `--compat-strict` 接受"缺附属内容但有核心结果"的产出，或稍后重试 |
 | `Failed to write` | `--out-dir` 不可写 → 检查目录权限/磁盘 |
 
 STOP 指令文本本身（"STOP: Do NOT attempt to continue..."）是给 Agent 的行为约束：不要重试绕过，把错误报给用户。

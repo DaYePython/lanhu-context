@@ -39,36 +39,19 @@ a1b2c3d4-2cec-4ede-acf5-3b3615f5cd96
 lanhu tokens "$URL" --format css > src/styles/design-tokens.css
 ```
 
-实测：本测试稿无高风险 token——stdout `:root {}`、stderr `WARN TOKENS_UNAVAILABLE: No high-risk design tokens found in this design (empty result)`、exit 0（degraded）。重定向文件只含产物，warning 不会混进去；`--strict` 时 exit 8。
+实测：本测试稿无高风险 token——stdout `:root {}`、stderr `WARN TOKENS_UNAVAILABLE: No high-risk design tokens found in this design (empty result)`、exit 0（附属内容缺失不算失败）。重定向文件只含产物，warning 不会混进去；`--strict` 时 exit 8。
 
-## 4. `assets --download` 幂等下载
+## 4. `assets --download` 重复执行安全的下载
 
-何时用：把切图落到项目资产目录；可反复执行（增量/续传语义）。
+何时用：把切图落到项目资产目录；可反复执行（已存在且内容相同的文件自动跳过，等价增量/续传）。
 
 ```bash
 lanhu assets "$URL" --download -o src/assets/lanhu --concurrency 4 --json
 ```
 
-实测 `data.summary`：首跑 `{"total":45,"written":45,"skipped":0,"overwritten":0,"failed":0}`；紧接着重跑 `{"total":45,"written":0,"skipped":45,"overwritten":0,"failed":0}`（内容 hash 一致全部 skipped），两次均 exit 0。先看清单不写盘：`--download --dry-run --json | jq .data.items`（实测每条 `"status":"planned"`，无 summary，exit 0）。
+实测 `data.summary`：首跑 `{"total":45,"written":45,"skipped":0,"overwritten":0,"failed":0}`；紧接着重跑 `{"total":45,"written":0,"skipped":45,"overwritten":0,"failed":0}`（内容一致全部 skipped），两次均 exit 0。先看清单不写盘：`--download --dry-run --json | jq .data.items`（实测每条 `"status":"planned"`，无 summary，exit 0）。
 
-## 5. 批量 NDJSON 消费
-
-何时用：一个项目多张设计稿一次导出，失败条目事后单独处理。
-
-```bash
-cat urls.txt | lanhu context --stdin --keep-going --json --out-dir .lanhu.local > report.ndjson
-jq -c 'select(.ok == false) | {input, code: .error.code}' report.ndjson
-```
-
-实测（2 行输入，1 好 1 坏）：exit 9；stdout 两行完整 envelope（成功行 `"files":[…"status":"written"…]`，失败行 `{"ok":false,…"error":{"code":"URL_MISSING_PID",…},"input":"https://lanhuapp.com/…tid=broken"}`）；stderr 汇总：
-
-```text
-ℹ batch: {"total":2,"ok":1,"failed":1}
-```
-
-全成功时 exit 0（重复 URL 第二次为 `"status":"skipped"`，幂等）。
-
-## 6. `context --inline` 接下游 AI
+## 5. `context --inline` 接下游 AI
 
 何时用：不落盘，把完整实现上下文直接塞给下游 AI CLI 的 prompt。
 
@@ -83,15 +66,15 @@ lanhu context "$URL" --inline | claude -p "按 context 实现这个页面"
 ℹ context: 76010 bytes inline; assets mapping: 45
 ```
 
-注意：`--inline` 与 `--json`/`--stdin` 互斥（exit 2 `USAGE_ERROR`）。
+注意：`--inline` 与 `--json` 互斥（exit 2 `USAGE_ERROR`）。
 
-## 7. `preview` 双通道
+## 6. `preview` 双通道
 
-何时用：要预览图文件（报告类消费）或直接把 PNG 流给下游。
+何时用：要预览图文件（读报告决定后续动作）或直接把 PNG 流给下游。
 
 ```bash
 lanhu preview "$URL" -o preview.png --json | jq .data.status   # "written"；重跑 → "skipped"
 lanhu preview "$URL" -o - > preview.png                        # 二进制直出，无 envelope，状态看退出码
 ```
 
-实测：首跑 `{"path":"…/preview.png","bytes":439128,"status":"written"}`，重跑 `"status":"skipped"`；`-o -` 直出 439128 bytes（`file` 验证 `PNG image data, 750 x 2056`），stderr `ℹ preview: 439128 bytes -> stdout`——三次均 exit 0。`--json -o -` 是用法错误（exit 2）。
+实测：首跑 `{"path":"…/preview.png","bytes":439128,"status":"written"}`，重跑 `"status":"skipped"`（重复执行安全）；`-o -` 直出 439128 bytes（`file` 验证 `PNG image data, 750 x 2056`），stderr `ℹ preview: 439128 bytes -> stdout`——三次均 exit 0。`--json -o -` 是用法错误（exit 2）。

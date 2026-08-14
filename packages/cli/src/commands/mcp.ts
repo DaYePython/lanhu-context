@@ -101,7 +101,8 @@ export const mcpCommand = defineCommand({
     description: [
       '启动 MCP 兼容 server（工具 get_design_context，对外契约与上游 lanhu-context-mcp 一致）。',
       '默认 stdio transport（stdout 只承载 JSON-RPC 帧）；--http 切换为 streamable HTTP（POST /mcp）。',
-      '默认行为差异：tokens/preview 等附属阶段失败降级为返回文本末尾的 warnings 段，--compat-strict 恢复上游整体报错语义。',
+      '与上游的默认行为差异：tokens/preview 等附属内容缺失时仍返回主体结果，缺失项列在返回文本末尾的 warnings 段；',
+      '--compat-strict 恢复上游"附属内容失败则整体报错"的行为。',
       '',
       '示例:',
       '  lanhu mcp --stdio',
@@ -146,7 +147,7 @@ export const mcpCommand = defineCommand({
       type: 'boolean',
       default: false,
       description:
-        '恢复上游语义：tokens/preview 等附属阶段失败时整体返回 isError（默认降级为 warnings 段）'
+        '恢复上游行为：tokens/preview 等附属内容失败时整体返回 isError（默认是继续返回主体结果并在 warnings 段列出缺失项）'
     },
     ...globalArgs,
     ...transformArgs

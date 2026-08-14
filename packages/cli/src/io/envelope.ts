@@ -84,7 +84,7 @@ export function strictFailureEnvelope(
       message: `--strict: ${warnings.length} warning(s) escalated to failure — ${summary}`,
       hint:
         first?.hint ??
-        'Re-run without --strict to accept degraded output, or fix the warned stage.',
+        'Re-run without --strict to accept the result with the missing auxiliary content (listed in warnings), or fix the warned stage.',
       retryable: false
     }
   };

@@ -8,7 +8,7 @@ export const schemaCommand = defineCommand({
   meta: {
     name: 'schema',
     description: [
-      '拉取原始 DDS schema JSON 并直出 stdout（产物流，适合落盘复查或喂给 `lanhu html -`）',
+      '下载设计稿的原始 DDS schema JSON 并输出到 stdout（可存成文件复查，或喂给 `lanhu html -` 离线转换）',
       '',
       '示例:',
       '  lanhu schema "$URL" > page.schema.json',

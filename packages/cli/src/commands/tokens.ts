@@ -14,9 +14,9 @@ export const tokensCommand = defineCommand({
   meta: {
     name: 'tokens',
     description: [
-      'Design Tokens 提取（产物流）：高风险视觉 token（渐变/边框/圆角/阴影/透明度）直出 stdout。',
+      '提取 Design Tokens（渐变/边框/圆角/阴影/透明度等易做错的视觉样式值）并输出到 stdout。',
       '--format json（默认）输出结构化条目数组；--format css 输出 :root { --var } CSS variables。',
-      '提取不到 tokens 时输出空结果并在 stderr 警告（degraded；--strict 时退出码 8）。',
+      '提取不到 tokens 不算失败：输出空结果、退出码 0，缺失原因在 stderr 警告里（--strict 时按失败处理，退出码 8）。',
       '',
       '示例:',
       '  lanhu tokens "$URL" > tokens.json',

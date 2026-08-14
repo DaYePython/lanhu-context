@@ -1,6 +1,6 @@
 import { LanhuError, parseLanhuUrl } from '@lanhu-context/core';
 import { defineCommand } from 'citty';
-import { batchArgs, globalArgs } from '../args';
+import { globalArgs } from '../args';
 import { readStdin } from '../io/stdin';
 import { executeCommand } from '../runner';
 
@@ -22,8 +22,7 @@ export const parseCommand = defineCommand({
       '示例:',
       '  lanhu parse "https://lanhuapp.com/web/#/item/project/detailDetach?tid=xxx&pid=xxx&image_id=xxx"',
       '  lanhu parse "tid=xxx&pid=xxx&image_id=xxx" --json',
-      '  echo "$URL" | lanhu parse - --json | jq -r .data.imageId',
-      '  cat urls.txt | lanhu parse --stdin --keep-going > ids.ndjson'
+      '  echo "$URL" | lanhu parse - --json | jq -r .data.imageId'
     ].join('\n')
   },
   args: {
@@ -32,10 +31,9 @@ export const parseCommand = defineCommand({
       required: false,
       valueHint: 'url|-',
       description:
-        '蓝湖设计稿完整 URL、query 串（tid=..&pid=..&image_id=..），或 - 从 stdin 读取；批量用 --stdin'
+        '蓝湖设计稿完整 URL、query 串（tid=..&pid=..&image_id=..），或 - 从 stdin 读取'
     },
-    ...globalArgs,
-    ...batchArgs
+    ...globalArgs
   },
   run: ({ args, rawArgs }) =>
     executeCommand({
@@ -70,7 +68,6 @@ export const parseCommand = defineCommand({
               `imageId    ${data.imageId}`
             ].join('\n')
         };
-      },
-      batchItem: async url => ({ data: parseToData(url) })
+      }
     })
 });

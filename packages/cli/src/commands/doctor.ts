@@ -10,8 +10,7 @@ import { join } from 'node:path';
 import { BASE_URL, DDS_BASE_URL, resolveOutDir } from '@lanhu-context/core';
 import { defineCommand } from 'citty';
 import { globalArgs } from '../args';
-import { EXIT_CONFIG, EXIT_IO, EXIT_UPSTREAM } from '../exit';
-import { dominantExitCode } from '../io/batch';
+import { dominantExitCode, EXIT_CONFIG, EXIT_IO, EXIT_UPSTREAM } from '../exit';
 import { executeCommand, type RunnerContext } from '../runner';
 
 export interface DoctorCheck {
@@ -154,8 +153,9 @@ export const doctorCommand = defineCommand({
   meta: {
     name: 'doctor',
     description: [
-      '环境自检（报告类）：node 版本 / lanhuapp.com 与 dds.lanhuapp.com 可达性 / token 配置 /',
-      'cwd 可写 / 输出目录可创建。任一失败仍完整跑完；全过退出码 0，有失败按主导类别（3/5/7）。',
+      '环境自检：node 版本 / lanhuapp.com 与 dds.lanhuapp.com 可达性 / token 配置 /',
+      'cwd 可写 / 输出目录可创建。个别检查失败也会全部跑完；全部通过退出码 0，',
+      '有失败时退出码取失败最多的类别（3 配置 / 5 网络 / 7 本地 IO）。',
       '',
       '示例:',
       '  lanhu doctor',

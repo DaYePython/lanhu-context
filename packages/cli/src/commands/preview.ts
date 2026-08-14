@@ -17,9 +17,9 @@ export const previewCommand = defineCommand({
   meta: {
     name: 'preview',
     description: [
-      '预览图：-o <file> 幂等落盘（内容 hash 比对）并在 stdout 输出报告；-o - 直出 PNG 二进制到 stdout',
-      '（此时无 envelope，状态看退出码 + stderr）。--json 必须配 -o <file>。',
-      '预览图不存在/下载失败为 degraded：退出码 0 + stderr 警告（--strict 时退出码 8）。',
+      '下载设计稿预览图：-o <file> 写入文件并输出结果报告（重复执行安全：内容相同的文件自动跳过）；',
+      '-o - 把 PNG 二进制直接输出到 stdout（此时不输出 JSON，成功与否看退出码和 stderr）。--json 必须配 -o <file>。',
+      '预览图不存在或下载失败不算错误：退出码 0，缺失原因在 stderr 警告里（--strict 时按失败处理，退出码 8）。',
       '',
       '示例:',
       '  lanhu preview "$URL" -o preview.png',
@@ -38,12 +38,14 @@ export const previewCommand = defineCommand({
       type: 'string',
       alias: 'o',
       valueHint: 'file|-',
-      description: 'PNG 输出：文件路径（幂等落盘），或 - 直出二进制到 stdout'
+      description:
+        'PNG 输出位置：文件路径（重复执行安全，内容相同自动跳过），或 - 直接输出二进制到 stdout'
     },
     force: {
       type: 'boolean',
       default: false,
-      description: '跳过内容 hash 比对，强制重写输出文件'
+      description:
+        '不比对已有文件内容，强制重写输出文件（默认内容相同时自动跳过）'
     },
     ...globalArgs
   },

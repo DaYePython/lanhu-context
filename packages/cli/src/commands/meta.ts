@@ -1,6 +1,6 @@
 import { fetchMeta, parseLanhuUrl } from '@lanhu-context/core';
 import { defineCommand } from 'citty';
-import { batchArgs, globalArgs } from '../args';
+import { globalArgs } from '../args';
 import { readStdin } from '../io/stdin';
 import { createClient, requireUrlArg, toDesignRequest } from '../lib';
 import { executeCommand, type RunnerContext } from '../runner';
@@ -24,12 +24,11 @@ export const metaCommand = defineCommand({
   meta: {
     name: 'meta',
     description: [
-      '设计稿元数据（报告类）：{name, projectName, imageId, previewUrl, versions 摘要}',
+      '查看设计稿元数据：{name, projectName, imageId, previewUrl, versions 摘要}',
       '',
       '示例:',
       '  lanhu meta "$URL"',
-      '  lanhu meta "$URL" --json | jq -r .data.previewUrl',
-      '  cat urls.txt | lanhu meta --stdin --keep-going > report.ndjson'
+      '  lanhu meta "$URL" --json | jq -r .data.previewUrl'
     ].join('\n')
   },
   args: {
@@ -37,11 +36,9 @@ export const metaCommand = defineCommand({
       type: 'positional',
       required: false,
       valueHint: 'url|-',
-      description:
-        '蓝湖设计稿完整 URL 或 query 串，- 从 stdin 读取单条；批量用 --stdin'
+      description: '蓝湖设计稿完整 URL 或 query 串，- 从 stdin 读取'
     },
-    ...globalArgs,
-    ...batchArgs
+    ...globalArgs
   },
   run: ({ args, rawArgs }) =>
     executeCommand({
@@ -66,7 +63,6 @@ export const metaCommand = defineCommand({
               `versions     count=${data.versions?.count ?? 0} latestHasSketchJson=${data.versions?.latestHasSketchJson ?? false}`
             ].join('\n')
         };
-      },
-      batchItem: async (url, ctx) => ({ data: await fetchMetaData(ctx, url) })
+      }
     })
 });

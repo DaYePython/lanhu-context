@@ -1,5 +1,7 @@
 // Runner lifecycle tests: envelope emission per §5 channel rules with the
-// TTY branch mocked, failure envelopes on stdout, and --strict escalation.
+// TTY branch mocked, failure envelopes on stdout, --strict escalation,
+// binary stdout, and handler-provided exit codes.
+import { Buffer } from 'node:buffer';
 import { LanhuError, makeWarning } from '@lanhu-context/core';
 import { executeCommand } from '../runner';
 
@@ -221,5 +223,44 @@ describe('executeCommand — --strict escalation', () => {
     expect(envelope.warnings).toHaveLength(1);
     expect(envelope.warnings[0].code).toBe('TAILWIND_FALLBACK');
     expect(process.exitCode).toBe(0);
+  });
+});
+
+describe('executeCommand — binary stdout and handler exit codes', () => {
+  test('binary artifacts are written raw without a trailing newline', async () => {
+    mockTTY(false);
+    await executeCommand({
+      command: 'preview',
+      kind: 'artifact',
+      args: baseArgs(),
+      rawArgs: [],
+      handler: async () => ({
+        data: { bytes: 4 },
+        binary: Buffer.from([0x89, 0x50, 0x4e, 0x47])
+      })
+    });
+    expect(stdoutSpy).toHaveBeenCalledTimes(1);
+    const chunk = stdoutSpy.mock.calls[0][0] as unknown;
+    expect(Buffer.isBuffer(chunk)).toBe(true);
+    expect([...(chunk as Buffer)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+    expect(process.exitCode).toBe(0);
+  });
+
+  test('a successful report can still set a non-zero exit code (doctor)', async () => {
+    mockTTY(false);
+    await executeCommand({
+      command: 'doctor',
+      kind: 'report',
+      args: baseArgs(),
+      rawArgs: [],
+      handler: async () => ({
+        data: { ok: false, checks: [] },
+        exitCode: 3
+      })
+    });
+    const envelope = JSON.parse(stdoutText());
+    expect(envelope.ok).toBe(true);
+    expect(envelope.data.ok).toBe(false);
+    expect(process.exitCode).toBe(3);
   });
 });

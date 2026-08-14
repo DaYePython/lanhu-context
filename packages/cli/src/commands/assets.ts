@@ -17,9 +17,9 @@ export const assetsCommand = defineCommand({
   meta: {
     name: 'assets',
     description: [
-      '切图映射（报告类）：默认输出 本地路径 → 远程 URL 的映射 JSON；--download 时并发下载落盘。',
-      '下载幂等：按内容 hash 比对，一致跳过（skipped）、不一致覆盖（overwritten）、新文件写入（written）；',
-      '单张失败记 warning 继续（--strict 首败即停并整体退出码 8）。',
+      '列出设计稿的切图（本地路径 → 远程 URL 的映射 JSON）；加 --download 才实际并发下载到本地。',
+      '重复执行安全：已存在且内容相同的文件自动跳过（skipped），内容变了才覆盖（overwritten），新文件写入（written）。',
+      '个别图片下载失败不中断，失败项记入 warnings 继续（--strict 时遇到失败立即停止，整体退出码 8）。',
       '',
       '示例:',
       '  lanhu assets "$URL"',
@@ -38,7 +38,7 @@ export const assetsCommand = defineCommand({
     download: {
       type: 'boolean',
       default: false,
-      description: '实际并发下载切图（默认只输出映射）'
+      description: '实际下载切图到本地（默认只列出映射、不下载）'
     },
     concurrency: {
       type: 'string',
@@ -50,22 +50,24 @@ export const assetsCommand = defineCommand({
       alias: 'o',
       valueHint: 'dir',
       description:
-        '下载落盘目录（同时作为映射的本地路径前缀；优先于 --assets-dir）'
+        '下载保存目录（同时作为映射的本地路径前缀；优先于 --assets-dir）'
     },
     'assets-dir': {
       type: 'string',
       valueHint: 'path',
-      description: '映射中的本地图片路径前缀（默认 ./src/assets/<设计稿名>）'
+      description:
+        '映射里图片引用的本地路径前缀（默认 ./src/assets/<设计稿名>）'
     },
     'dry-run': {
       type: 'boolean',
       default: false,
-      description: '配合 --download：只报告将下载哪些文件，不写盘'
+      description: '配合 --download：只列出将下载哪些文件，不实际写盘'
     },
     force: {
       type: 'boolean',
       default: false,
-      description: '跳过内容 hash 比对，强制重写全部切图'
+      description:
+        '不比对已有文件内容，强制重新下载并重写全部切图（默认内容相同的文件自动跳过）'
     },
     ...globalArgs
   },

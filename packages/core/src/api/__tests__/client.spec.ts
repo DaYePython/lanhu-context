@@ -268,6 +268,46 @@ describe('LanhuClient — envelope errors (HTTP 200 + null payload)', () => {
       message: 'store_schema_revise did not return data_resource_url'
     });
   });
+
+  // Design uploaded without「设计图转代码」: DDS answers HTTP 200 + empty data
+  // with business code 10011 / msg "版本数据不存在" — a dedicated error code,
+  // not the generic EMPTY_RESULT ambiguity (token/URL are fine here).
+  test('getDesignSchemaJson maps DDS 10011/版本数据不存在 to TRANSCODE_NOT_ENABLED', async () => {
+    const ddsBodies = [
+      { code: '10011', msg: '版本数据不存在', data: null },
+      { code: 10011, data: null },
+      { code: '10099', msg: '哦豁 版本数据不存在', data: null }
+    ];
+    let ddsCall = 0;
+    const { client } = makeClient(url => {
+      if (url.pathname === '/api/project/multi_info') {
+        return jsonResponse({
+          code: '00000',
+          result: { images: [{ id: 'img-1', latest_version: 'v-1' }] }
+        });
+      }
+      if (url.pathname === '/api/dds/image/store_schema_revise') {
+        return jsonResponse(ddsBodies[ddsCall++]);
+      }
+      return undefined;
+    });
+
+    // The upstream code/msg is preserved in the message.
+    await expect(client.getDesignSchemaJson(REQUEST)).rejects.toMatchObject({
+      code: 'TRANSCODE_NOT_ENABLED',
+      exitClass: 4,
+      retryable: false,
+      message: expect.stringContaining('(10011 版本数据不存在)')
+    });
+    // Numeric business code alone also triggers it.
+    await expect(client.getDesignSchemaJson(REQUEST)).rejects.toMatchObject({
+      code: 'TRANSCODE_NOT_ENABLED'
+    });
+    // The msg substring alone also triggers it.
+    await expect(client.getDesignSchemaJson(REQUEST)).rejects.toMatchObject({
+      code: 'TRANSCODE_NOT_ENABLED'
+    });
+  });
 });
 
 describe('LanhuClient — meta fallbacks', () => {

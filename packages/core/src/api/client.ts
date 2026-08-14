@@ -79,6 +79,17 @@ function unwrapEnvelope<T>(
   );
 }
 
+// A design uploaded without「设计图转代码」(design-to-code) enabled has no
+// structure data at all: the DDS store_schema_revise endpoint answers
+// HTTP 200 + empty data with business code 10011 ("版本数据不存在").
+// Distinguish it from the generic EMPTY_RESULT ambiguity so the hint does
+// not send users chasing token/URL problems that do not exist.
+function isTranscodeNotEnabled(body: LanhuApiResponse<unknown>): boolean {
+  const code = body.code == null ? '' : String(body.code);
+  const msg = typeof body.msg === 'string' ? body.msg : '';
+  return code === '10011' || msg.includes('版本数据不存在');
+}
+
 function isTimeoutLike(error: unknown): boolean {
   let current: unknown = error;
   for (let depth = 0; depth < 5 && current != null; depth++) {
@@ -291,6 +302,18 @@ export class LanhuClient implements DesignSourceClient {
       >('/api/dds/image/store_schema_revise', {
         query: { version_id: versionId }
       });
+
+      // Upload without「设计图转代码」→ HTTP 200 + empty data + code 10011
+      // ("版本数据不存在"): a dedicated error, not the generic EMPTY_RESULT.
+      if (body.data == null && isTranscodeNotEnabled(body)) {
+        const detail = [body.code, body.msg]
+          .filter(v => v !== undefined && v !== null && v !== '')
+          .join(' ');
+        throw new LanhuError(
+          'TRANSCODE_NOT_ENABLED',
+          `Lanhu DDS API /api/dds/image/store_schema_revise returned empty data (${detail}) — the design has no structure data because「设计图转代码」was not enabled at upload time`
+        );
+      }
 
       const schemaUrl = unwrapEnvelope(
         body,
