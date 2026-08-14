@@ -1,5 +1,11 @@
 # @lanhu-context/core
 
+## 0.3.1
+
+### Patch Changes
+
+- 8b3a2d0: docs: 为三个包新增 npm README（安装、命令/能力概览、MCP 客户端配置与上游迁移说明）
+
 ## 0.3.0
 
 ### Minor Changes
