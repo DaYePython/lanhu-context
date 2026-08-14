@@ -4,14 +4,16 @@
 
 [仓库主页 / 完整文档](https://github.com/DaYePython/lanhu-context)
 
-## 快速使用（推荐走 CLI）
+## 快速使用
 
-最简单的方式是通过 [`@lanhu-context/cli`](https://www.npmjs.com/package/@lanhu-context/cli) 启动：
+本包自带 bin `lanhu-context-mcp`，直接启动：
 
 ```bash
-npx -y -p @lanhu-context/cli lanhu mcp --stdio                       # stdio（MCP 客户端拉起子进程）
-npx -y -p @lanhu-context/cli lanhu mcp --http --port 5200            # streamable HTTP（POST /mcp）
+npx -y @lanhu-context/mcp --stdio                # stdio（MCP 客户端拉起子进程）
+npx -y @lanhu-context/mcp --http --port 5200     # streamable HTTP（POST /mcp）
 ```
+
+凭据解析顺序：env `LANHU_TOKEN` / `DDS_TOKEN` > `--env-file <path>` > `<cwd>/.env.local`。全部 flags 见 `lanhu-context-mcp --help`。
 
 MCP 客户端配置示例：
 
@@ -20,7 +22,7 @@ MCP 客户端配置示例：
   "mcpServers": {
     "lanhu-context": {
       "command": "npx",
-      "args": ["-y", "-p", "@lanhu-context/cli", "lanhu", "mcp", "--stdio"],
+      "args": ["-y", "@lanhu-context/mcp", "--stdio"],
       "env": { "LANHU_TOKEN": "<已登录 lanhuapp.com 的整段浏览器 Cookie>" }
     }
   }

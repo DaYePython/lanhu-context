@@ -1,5 +1,5 @@
-// stdio integration test for `lanhu mcp` (DESIGN.md §11 M4 DoD): spawns the
-// built CLI bin, connects a real MCP client over stdio, and asserts the
+// stdio integration test for the `lanhu-context-mcp` bin (DESIGN.md §11 M4
+// DoD): spawns the built bin, connects a real MCP client over stdio, and asserts the
 // get_design_context return structure is signature-compatible with upstream
 // lanhu-context-mcp (same assertions as its stdio integration spec).
 //
@@ -26,9 +26,7 @@ import {
   CallToolResultSchema
 } from '@modelcontextprotocol/sdk/types.js';
 
-const BIN = fileURLToPath(
-  new URL('../../../cli/dist/main.js', import.meta.url)
-);
+const BIN = fileURLToPath(new URL('../../dist/main.js', import.meta.url));
 
 function loadEnvLocal(): Record<string, string> {
   const envPath = fileURLToPath(
@@ -75,7 +73,7 @@ interface Harness {
 async function setup(extraArgs: string[] = [], cwd?: string): Promise<Harness> {
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: [BIN, 'mcp', '--stdio', ...extraArgs],
+    args: [BIN, '--stdio', ...extraArgs],
     cwd: cwd ?? workDir,
     env: {
       ...(process.env.PATH ? { PATH: process.env.PATH } : {}),
@@ -100,7 +98,7 @@ async function setup(extraArgs: string[] = [], cwd?: string): Promise<Harness> {
     const stderrOutput = stderrChunks.join('').trim();
     if (stderrOutput) {
       throw new Error(
-        `Failed to start \`lanhu mcp --stdio\`:\n${stderrOutput}`
+        `Failed to start \`lanhu-context-mcp --stdio\`:\n${stderrOutput}`
       );
     }
     throw error;
@@ -129,7 +127,7 @@ type TextItem = { type: 'text'; text: string };
 let workDir = tmpdir();
 
 describe.runIf(enabled)(
-  'lanhu mcp — stdio integration (RUN_INTEGRATION=1)',
+  'lanhu-context-mcp — stdio integration (RUN_INTEGRATION=1)',
   () => {
     beforeAll(() => {
       expect(

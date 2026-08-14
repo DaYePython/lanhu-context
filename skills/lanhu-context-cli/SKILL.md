@@ -107,4 +107,4 @@ diff /tmp/lanhu-tokens.css src/styles/design-tokens.css
 - 全命令/flags/退出码/配置优先级：[references/cli-reference.md](references/cli-reference.md)
 - 管道配方（schema 落盘离线转换、`--inline` 接下游 AI 等）：[references/pipeline.md](references/pipeline.md)
 - 按退出码排障索引：[references/troubleshooting.md](references/troubleshooting.md)
-- MCP 场景（MCP 客户端配置、`lanhu mcp` server、自上游 lanhu-context-mcp 迁移）：见 `skills/lanhu-context-mcp`，不在本技能范围。
+- MCP 场景（MCP 客户端配置、`lanhu-context-mcp` server、自上游 lanhu-context-mcp 迁移）：见 `skills/lanhu-context-mcp`，不在本技能范围。

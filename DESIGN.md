@@ -141,7 +141,7 @@ bin 名建议注册两个：`lanhu`（日常）与 `lanhu-context`（防冲突�
 | `lanhu context <url>` | 复合命令 = 上游 `export`：一次产出 context.md + preview.png | 文件清单 JSON（`--inline` 时为 context 正文） |
 | `lanhu auth <set\|status\|test>` | 凭据管理与活性检测 | 状态 JSON（永不含 token 明文） |
 | `lanhu doctor` | 环境自检（node 版本/网络/token/cwd 可写） | 检查报告 |
-| `lanhu mcp [--stdio\|--http]` | 启动 MCP 兼容 server | （协议流） |
+| `lanhu-context-mcp [--stdio\|--http]`（@lanhu-context/mcp 自带 bin，CLI 不含此功能） | 启动 MCP 兼容 server | （协议流） |
 
 原子命令（parse→preview）对应管道各阶段，`context` 是官方组合的快捷复合命令——既满足"一步出结果"，又不牺牲可组合性。
 
@@ -372,7 +372,7 @@ references/ 保留：`cli-reference.md`（参数表）、`pipeline.md`（管道�
 `packages/mcp` 保持与 lanhu-context-mcp 的对外契约，迁移零成本：
 
 - 工具名 `get_design_context`、入参 `{url}`、inline/files 两种 mode、resource_link 返回结构不变；
-- `lanhu mcp --stdio|--http --host --port --mode` 对应上游 server flags；
+- `lanhu-context-mcp --stdio|--http --host --port --mode`（@lanhu-context/mcp 的 bin）对应上游 server flags；
 - 差异点：内部走 core 的分级严重性——degraded 阶段失败不再整体报错，而是在返回文本中附 warnings 段（行为变化在文档中标注，`--compat-strict` 可回退上游"全停"语义）。
 
 ---

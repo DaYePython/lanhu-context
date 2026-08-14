@@ -13,7 +13,7 @@
 - **Graded severity** — optional stages (tokens, preview) failing degrade with warnings instead of killing the run (`fatal` / `degraded` / `notice`).
 - **Idempotent outputs** — re-runs compare file content and report `written` / `skipped` / `overwritten`; `--force` to override.
 - **Credential tooling** — `lanhu auth set/test` and `lanhu doctor` for token (browser Cookie) management and diagnosis; tokens are never echoed.
-- **MCP compatibility** — `lanhu mcp` serves the upstream `lanhu-context-mcp` `get_design_context` tool contract over stdio or streamable HTTP.
+- **MCP compatibility** — the standalone `lanhu-context-mcp` bin (npm `@lanhu-context/mcp`) serves the upstream `lanhu-context-mcp` `get_design_context` tool contract over stdio or streamable HTTP.
 - **Agent skills included** — ready-made skills under [skills/](skills/) teach Claude Code (and other agents) how to drive the CLI and the MCP server.
 
 ## Install
@@ -68,7 +68,7 @@ lanhu assets "$URL" --download -o src/assets/my-page --json
 
 Prefer atomic commands when you only need part of the pipeline, e.g. `lanhu html "$URL" --skip-slices` for layout only, or `lanhu tokens "$URL"` for tokens only.
 
-For MCP clients: run `lanhu mcp --stdio` (or `--http`) and register it in the client; migration from the upstream `lanhu-context-mcp` npm package is drop-in — see [skills/lanhu-context-mcp/SKILL.md](skills/lanhu-context-mcp/SKILL.md).
+For MCP clients: run `npx -y @lanhu-context/mcp --stdio` (bin `lanhu-context-mcp`, `--http` also supported) and register it in the client; migration from the upstream `lanhu-context-mcp` npm package is drop-in — see [skills/lanhu-context-mcp/SKILL.md](skills/lanhu-context-mcp/SKILL.md).
 
 ## Packages
 

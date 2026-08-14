@@ -1,35 +1,33 @@
 ---
 name: lanhu-context-mcp
-description: 蓝湖(Lanhu) MCP server 配置与排障：当用户要在 Claude Code / Cursor / Codex 等 MCP 客户端里以工具形式使用蓝湖设计稿（get_design_context），要启动 `lanhu mcp`（stdio/http），或要从上游 lanhu-context-mcp npm 包迁移到 @lanhu-context/mcp 时使用。不适用于直接在终端跑蓝湖导出命令（那是 lanhu-context-cli skill 的场景），也不适用于 Figma、Sketch、MasterGo 等非蓝湖平台。
+description: 蓝湖(Lanhu) MCP server 配置与排障：当用户要在 Claude Code / Cursor / Codex 等 MCP 客户端里以工具形式使用蓝湖设计稿（get_design_context），要启动 `lanhu-context-mcp`（stdio/http，npm 包 @lanhu-context/mcp），或要从上游 lanhu-context-mcp npm 包迁移时使用。不适用于直接在终端跑蓝湖导出命令（那是 lanhu-context-cli skill 的场景），也不适用于 Figma、Sketch、MasterGo 等非蓝湖平台。
 ---
 
 # lanhu-context-mcp（MCP 兼容层）
 
-`lanhu mcp` 启动一个 MCP server，注册唯一工具 `get_design_context`，对外契约与上游 `lanhu-context-mcp` npm 包完全一致（工具名、入参 `{url}`、inline/files 两种 mode、resource_link、isError + STOP 错误文本）。内部走 `@lanhu-context/core` 的分级严重性管道，默认行为差异见下文 `--compat-strict`。
+`lanhu-context-mcp`（npm 包 `@lanhu-context/mcp` 自带的 bin）启动一个 MCP server，注册唯一工具 `get_design_context`，对外契约与上游 `lanhu-context-mcp` npm 包完全一致（工具名、入参 `{url}`、inline/files 两种 mode、resource_link、isError + STOP 错误文本）。内部走 `@lanhu-context/core` 的分级严重性管道，默认行为差异见下文 `--compat-strict`。
 
-CLI 直调（`lanhu context` / `lanhu html` 等原子命令、退出码、envelope）不在本 skill 范围，见 `lanhu-context-cli` skill。
+CLI 直调（`lanhu context` / `lanhu html` 等原子命令、退出码、envelope）不在本 skill 范围，见 `lanhu-context-cli` skill；CLI 包 `@lanhu-context/cli` 不含 MCP 功能。
 
-## 何时用 `lanhu mcp`，何时用 CLI
+## 何时用 `lanhu-context-mcp`，何时用 CLI
 
 | 场景 | 用什么 |
 | --- | --- |
 | Agent 能直接执行 shell 命令 | CLI 直调（`lanhu context <url> --json` 等）。原子命令 + 退出码 + envelope 比协议往返更省上下文，见 lanhu-context-cli skill |
-| MCP 客户端（Claude Code / Cursor / Codex / TRAE 等）内以工具形式消费 | `lanhu mcp` |
-| 已有基于上游 `lanhu-context-mcp` 包的客户端配置，想换到本仓实现 | `lanhu mcp`，按下方迁移对照表改配置 |
+| MCP 客户端（Claude Code / Cursor / Codex / TRAE 等）内以工具形式消费 | `lanhu-context-mcp` |
+| 已有基于上游 `lanhu-context-mcp` 包的客户端配置，想换到本仓实现 | `lanhu-context-mcp`，按下方迁移对照表改配置 |
 | 管道组合、CI 集成 | CLI：退出码 + 统一 JSON 输出（envelope）好编排；MCP 只面向客户端内的工具调用 |
 
 ## 启动
 
-先确认凭据可用（token 解析链与 CLI 相同：`--token` > env `LANHU_TOKEN` > env 文件 > `lanhu.config.json` > 用户级配置）：
-
-```bash
-lanhu auth test        # exit 0 = token 有效；exit 3/4 先按 lanhu-context-cli skill 排障
-```
+凭据解析顺序（与 CLI 不同，本 bin 只认三处）：env `LANHU_TOKEN` / `DDS_TOKEN` > `--env-file <path>` > `<cwd>/.env.local`。token 是已登录 lanhuapp.com 会话的整段浏览器 Cookie，绝不放进 argv。
 
 stdio（默认，MCP 客户端拉起子进程）：
 
 ```bash
-lanhu mcp --stdio
+LANHU_TOKEN="<cookie>" lanhu-context-mcp --stdio
+# 未全局安装时（包名即 bin 名，npx 可直接定位入口）：
+npx -y @lanhu-context/mcp --stdio
 ```
 
 stdio 模式 stdout 只承载 JSON-RPC 帧，所有日志走 stderr——不要在包装脚本里向 stdout 打印任何东西。
@@ -37,19 +35,19 @@ stdio 模式 stdout 只承载 JSON-RPC 帧，所有日志走 stderr——不要�
 streamable HTTP（常驻进程，POST /mcp）：
 
 ```bash
-lanhu mcp --http --host 127.0.0.1 --port 5200
+lanhu-context-mcp --http --host 127.0.0.1 --port 5200
 ```
 
 启动成功的 stderr（真实输出）：
 
 ```text
-ℹ [http] MCP server running on http://127.0.0.1:5200/mcp
-ℹ get_design_context 已注册；POST http://127.0.0.1:5200/mcp
+[http] MCP server running on http://127.0.0.1:5200/mcp
+get_design_context 已注册；POST http://127.0.0.1:5200/mcp
 ```
 
 只接受 `POST /mcp`；`GET`/`DELETE` 返回 `405`（`Allow: POST`），其他路径 `404`。
 
-完整 flags 看 `lanhu mcp --help`。要点：
+完整 flags 看 `lanhu-context-mcp --help`。要点：
 
 | flag | 说明 |
 | --- | --- |
@@ -60,18 +58,18 @@ lanhu mcp --http --host 127.0.0.1 --port 5200
 | `--compat-strict` | 恢复上游"任一阶段失败全停"语义 |
 | `--tailwind --tw-version <3\|4>` / `--skip-slices` / `--unit-scale <n>` / `--assets-dir <path>` | 与 CLI 的 `html`/`context` 同义，作用于工具产出 |
 | `--lang <zh-CN\|en-US>` | 工具描述/指引/错误文本语言，默认 en-US |
-| `--token` / `--dds-token` / `--env-file <path>` / `--cwd <path>` / `--timeout <ms>` / `--retries <n>` | 与 CLI 全局 flags 相同 |
+| `--env-file <path>` / `--timeout <ms>` | env 文件路径 / 蓝湖 API 超时 |
 
 ## 客户端配置示例
 
-MCP 客户端拉起子进程时 cwd 通常不是你的项目根：`.env.local` 不会被自动找到。要么在 `env` 里传 `LANHU_TOKEN`，要么用 `--cwd <项目绝对路径>`（先于 env 加载生效）让它读项目里的 `.env.local`。推荐后者，token 不进配置文件。
+MCP 客户端拉起子进程时 cwd 通常不是你的项目根：`<cwd>/.env.local` 不会被自动找到。要么在客户端配置的 `env` 里传 `LANHU_TOKEN`，要么用 `--env-file <项目内 .env.local 的绝对路径>`。推荐后者，token 不进配置文件。
 
 Claude Code（stdio）：
 
 ```bash
-claude mcp add lanhu -- lanhu mcp --stdio --cwd /abs/path/to/project
+claude mcp add lanhu -- lanhu-context-mcp --stdio --env-file /abs/path/to/project/.env.local
 # 未全局安装时：
-claude mcp add lanhu -- npx -y -p @lanhu-context/cli lanhu mcp --stdio --cwd /abs/path/to/project
+claude mcp add lanhu -- npx -y @lanhu-context/mcp --stdio --env-file /abs/path/to/project/.env.local
 ```
 
 Cursor / 通用 `.mcp.json`（stdio）：
@@ -82,9 +80,9 @@ Cursor / 通用 `.mcp.json`（stdio）：
     "lanhu": {
       "command": "npx",
       "args": [
-        "-y", "-p", "@lanhu-context/cli",
-        "lanhu", "mcp", "--stdio",
-        "--cwd", "/abs/path/to/project",
+        "-y", "@lanhu-context/mcp",
+        "--stdio",
+        "--env-file", "/abs/path/to/project/.env.local",
         "--lang", "zh-CN"
       ]
     }
@@ -92,9 +90,7 @@ Cursor / 通用 `.mcp.json`（stdio）：
 }
 ```
 
-注意 npx 形式必须带 `-p @lanhu-context/cli` 指定包名再给 bin 名 `lanhu`（包名与 bin 名不同，`npx -y @lanhu-context/cli` 无法确定入口）。
-
-HTTP（先手动 `lanhu mcp --http --port 5200` 常驻）：
+HTTP（先手动 `lanhu-context-mcp --http --port 5200` 常驻）：
 
 ```bash
 claude mcp add --transport http lanhu http://127.0.0.1:5200/mcp
@@ -131,25 +127,23 @@ URL 解析失败、token 失效、schema 拉取失败等致命错误在两种模
 
 ## 从上游 lanhu-context-mcp 迁移
 
-启动命令：`npx -y lanhu-context-mcp <flags>` → `lanhu mcp <flags>`（或 `npx -y -p @lanhu-context/cli lanhu mcp <flags>`）。
+启动命令：`npx -y lanhu-context-mcp <flags>` → `npx -y @lanhu-context/mcp <flags>`（bin 名不变，仍是 `lanhu-context-mcp`）。
 
 | 上游 flag | 本实现 | 说明 |
 | --- | --- | --- |
-| `--lanhu-token` | `--token` | 语义不变 |
-| `--dds-token` | `--dds-token` | 不变 |
+| `--lanhu-token` / `--dds-token` | （移除） | token 只走 env `LANHU_TOKEN` / `DDS_TOKEN` 或 env 文件，不进 argv |
 | `--http-timeout <ms>` | `--timeout <ms>` | 更名 |
-| （无） | `--retries <n>` | 新增：仅对网络超时/5xx/下载做指数退避重试，默认 2 |
 | `--stdio` / `--http` / `--host` / `--port` | 同名 | 默认值相同（stdio；127.0.0.1:5200） |
-| `--tailwindcss` | `--tailwind`（`--tailwindcss` 为兼容别名） | 别名仍可用 |
+| `--tailwindcss` | `--tailwind` | 更名 |
 | `--tw-version` / `--skip-slices` / `--unit-scale` | 同名 | 不变 |
-| `--prompt-lang` | `--lang`（`--prompt-lang` 为兼容别名） | 别名仍可用 |
-| `--env-file` / `--env-path` | `--env-file`（`--env-path` 为兼容别名） | 不变 |
-| `--cwd` | `--cwd` | 不变；本实现要求目录存在，否则 CONFIG_INVALID（exit 3） |
+| `--prompt-lang` | `--lang` | 更名 |
+| `--env-file` / `--env-path` | `--env-file` | 统一为 `--env-file` |
+| `--cwd` | （移除） | 用 `--env-file` 传绝对路径替代"到项目根找 .env.local" |
 | `--mode <inline\|files>` | 同名 | 不变 |
 | `--out-dir` | 同名 | **默认目录变更**：`.lanhu-context-mcp.local` → `.lanhu.local`；要保持旧路径显式传 `--out-dir .lanhu-context-mcp.local` |
 | （无） | `--compat-strict` | 新增：恢复上游全停语义 |
 
-环境变量：`LANHU_TOKEN` / `DDS_TOKEN` / `ENV_FILE` / `PROMPT_LANG` 继续生效。上游的 `STDIO` / `MODE` / `OUT_DIR` / `PORT` / `HOST` / `TAILWINDCSS` / `TW_VERSION` / `SKIP_SLICES` / `UNIT_SCALE` / `HTTP_TIMEOUT` 环境变量在本实现中**不再读取**，迁移时改为对应 flag。
+环境变量：`LANHU_TOKEN` / `DDS_TOKEN` 继续生效。上游的 `ENV_FILE` / `PROMPT_LANG` / `STDIO` / `MODE` / `OUT_DIR` / `PORT` / `HOST` / `TAILWINDCSS` / `TW_VERSION` / `SKIP_SLICES` / `UNIT_SCALE` / `HTTP_TIMEOUT` 环境变量在本实现中**不再读取**，迁移时改为对应 flag。
 
 工具契约不变项：工具名 `get_design_context`；入参 schema `{url: string}`（描述文本随 `--lang` 与上游同文案）；inline content 顺序；files 模式 resource_link（`context.md` + `preview.png`）；错误 isError + STOP 文本。客户端侧无需改任何工具调用代码。
 
@@ -163,21 +157,20 @@ server 是长驻进程：启动失败看进程退出码，工具调用失败看�
 
 | 退出码 | stderr 特征 | 原因 → 动作 |
 | --- | --- | --- |
-| 2 | `USAGE_ERROR: --mode expects "inline" or "files"` | flag 值非法；同类还有 `--stdio 与 --http 互斥`、`--port expects an integer between 1 and 65535` → 修 flag 重启 |
-| 3 | `TOKEN_MISSING: LANHU_TOKEN is not configured (checked --token, env LANHU_TOKEN, the env file, lanhu.config.json, and the user config)` | 客户端拉起的子进程 cwd 不是项目根，`.env.local` 没被读到 → 配置里加 `--cwd /abs/path/to/project`，或 `--env-file` 传绝对路径，或在客户端配置 `env` 里传 `LANHU_TOKEN` |
-| 3 | `CONFIG_INVALID: --cwd is not an existing directory` 或 `env file not found` | 路径写错 → 用绝对路径 |
+| 2 | `USAGE_ERROR: --mode 期望 "inline" 或 "files"` | flag 值非法；同类还有 `--stdio 与 --http 互斥`、`--port 期望 1~65535 的整数`、`未知参数` → 修 flag 重启 |
+| 4 | `TOKEN_MISSING: 未找到 LANHU_TOKEN` | 客户端拉起的子进程 cwd 不是项目根，`.env.local` 没被读到 → 配置里加 `--env-file /abs/path/to/project/.env.local`，或在客户端配置 `env` 里传 `LANHU_TOKEN` |
 | 1 | `EADDRINUSE`（`--http`） | 端口被占 → 换 `--port` |
 
-真实输出示例（exit 2）：
+真实输出示例（exit 4）：
 
 ```text
-ERROR  USAGE_ERROR: --mode expects "inline" or "files", got "bogus"
-hint: The command was invoked with invalid arguments or conflicting flags. Run the command with --help to see valid usage and examples.
+TOKEN_MISSING: 未找到 LANHU_TOKEN（已登录 lanhuapp.com 会话的整段浏览器 Cookie）。
+hint: 通过环境变量 LANHU_TOKEN、--env-file <path> 或 <cwd>/.env.local 提供。
 ```
 
 ### 客户端连不上 / 协议报错
 
-- stdio 下客户端报 JSON parse error：stdout 被污染。`lanhu mcp` 自身日志全走 stderr；检查是否用 `npm run` / shell 包装脚本启动（它们会往 stdout 打 banner）→ 直接用 bin（`lanhu` 或 `npx -y -p @lanhu-context/cli lanhu`）。
+- stdio 下客户端报 JSON parse error：stdout 被污染。`lanhu-context-mcp` 自身日志全走 stderr；检查是否用 `npm run` / shell 包装脚本启动（它们会往 stdout 打 banner）→ 直接用 bin（`lanhu-context-mcp` 或 `npx -y @lanhu-context/mcp`）。
 - HTTP 收到 `405 Method Not Allowed`：只支持 `POST /mcp`，客户端 transport 选 streamable HTTP（不是 SSE/GET）。
 - HTTP 收到 `404`：路径必须是 `/mcp`。
 
@@ -188,7 +181,7 @@ hint: The command was invoked with invalid arguments or conflicting flags. Run t
 | 文本特征 | 原因 → 动作 |
 | --- | --- |
 | `must contain a tid` / `pid` / `image_id` | URL 不完整 → 让用户从浏览器地址栏复制完整设计稿详情 URL |
-| `returned empty result` / `EMPTY_RESULT` 语义（HTTP 200 空 payload） | token 过期 / 无权限 / URL 不完整其一 → 按 token → URL → 转码开关顺序排查：先在终端跑 `lanhu auth test`，再核对 URL；token 过期则重新登录蓝湖取整段 Cookie 后重启 server |
+| `returned empty result` / `EMPTY_RESULT` 语义（HTTP 200 空 payload） | token 过期 / 无权限 / URL 不完整其一 → 按 token → URL → 转码开关顺序排查：先在终端跑 `lanhu auth test`（CLI，见 lanhu-context-cli skill），再核对 URL；token 过期则重新登录蓝湖取整段 Cookie 后重启 server |
 | `TRANSCODE_NOT_ENABLED` / `版本数据不存在` | 设计稿上传时未开启「设计图转代码」，蓝湖没有结构数据 → 在蓝湖删除后重新上传并勾选「设计图转代码」，转码完成后重试；换 token/重试无用 |
 | `Failed to extract design tokens` / `Failed to download design preview`（仅 `--compat-strict` 下出现为错误） | 上游全停语义生效 → 去掉 `--compat-strict` 接受"缺附属内容但有核心结果"的产出，或稍后重试 |
 | `Failed to write` | `--out-dir` 不可写 → 检查目录权限/磁盘 |
@@ -201,7 +194,7 @@ STOP 指令文本本身（"STOP: Do NOT attempt to continue..."）是给 Agent �
 
 ### 进一步定位
 
-复杂问题可绕开协议在终端直接复现同一条管道（错误码/退出码体系相同）：
+复杂问题可绕开协议在终端直接复现同一条管道（CLI 与本 server 共用 `@lanhu-context/core` 的错误码体系）：
 
 ```bash
 lanhu auth test

@@ -1,5 +1,5 @@
 // createServer(): an McpServer with get_design_context registered — the
-// piece the CLI (`lanhu mcp`) and embedders mount on a transport.
+// piece the `lanhu-context-mcp` bin and embedders mount on a transport.
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import {

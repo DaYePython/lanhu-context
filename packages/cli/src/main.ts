@@ -13,7 +13,6 @@ import { authCommand } from './commands/auth';
 import { contextCommand } from './commands/context';
 import { doctorCommand } from './commands/doctor';
 import { htmlCommand } from './commands/html';
-import { mcpCommand } from './commands/mcp';
 import { metaCommand } from './commands/meta';
 import { parseCommand } from './commands/parse';
 import { previewCommand } from './commands/preview';
@@ -29,7 +28,7 @@ const main = defineCommand({
     name: 'lanhu',
     version: CLI_VERSION,
     description:
-      '蓝湖设计稿上下文管道工具箱：parse / meta / schema / html / tokens / assets / preview / context / auth / doctor / mcp（`lanhu-context` 为等价全名 bin）'
+      '蓝湖设计稿上下文管道工具箱：parse / meta / schema / html / tokens / assets / preview / context / auth / doctor（`lanhu-context` 为等价全名 bin；MCP server 用 @lanhu-context/mcp 包的 lanhu-context-mcp 启动）'
   },
   subCommands: {
     parse: parseCommand,
@@ -41,8 +40,7 @@ const main = defineCommand({
     preview: previewCommand,
     context: contextCommand,
     auth: authCommand,
-    doctor: doctorCommand,
-    mcp: mcpCommand
+    doctor: doctorCommand
   }
 });
 
@@ -56,8 +54,7 @@ const KNOWN_COMMANDS = new Set([
   'preview',
   'context',
   'auth',
-  'doctor',
-  'mcp'
+  'doctor'
 ]);
 
 async function bootstrap(): Promise<void> {
@@ -98,7 +95,7 @@ async function bootstrap(): Promise<void> {
   if (!KNOWN_COMMANDS.has(firstPositional)) {
     const error = new LanhuError(
       'USAGE_ERROR',
-      `unknown command "${firstPositional}" (expected: parse | meta | schema | html | tokens | assets | preview | context | auth | doctor | mcp)`
+      `unknown command "${firstPositional}" (expected: parse | meta | schema | html | tokens | assets | preview | context | auth | doctor)`
     );
     process.stderr.write(
       `USAGE_ERROR: ${error.message}\nhint: ${error.hint}\n`

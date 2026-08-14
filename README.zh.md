@@ -13,7 +13,7 @@
 - **分级严重性** —— tokens / preview 等附属阶段失败只降级为 warning，不拖垮核心产物（`fatal` / `degraded` / `notice` 三级）。
 - **幂等输出** —— 重跑会比对文件内容并报告 `written` / `skipped` / `overwritten`；`--force` 强制重写。
 - **凭据工具链** —— `lanhu auth set/test` 与 `lanhu doctor` 管理和诊断 token（整段浏览器 Cookie）；token 绝不回显。
-- **MCP 兼容** —— `lanhu mcp` 以 stdio 或 streamable HTTP 提供与上游 `lanhu-context-mcp` 完全一致的 `get_design_context` 工具契约。
+- **MCP 兼容** —— 独立 bin `lanhu-context-mcp`（npm 包 `@lanhu-context/mcp`）以 stdio 或 streamable HTTP 提供与上游完全一致的 `get_design_context` 工具契约。
 - **自带 Agent skills** —— [skills/](skills/) 内置两个 skill，教 Claude Code 等 Agent 正确驱动 CLI 与 MCP server。
 
 ## 安装
@@ -68,7 +68,7 @@ lanhu assets "$URL" --download -o src/assets/my-page --json
 
 只需要部分数据时优先用原子命令：只要布局用 `lanhu html "$URL" --skip-slices`，只要 tokens 用 `lanhu tokens "$URL"`。
 
-MCP 客户端场景：运行 `lanhu mcp --stdio`（或 `--http`）并在客户端注册；从上游 `lanhu-context-mcp` npm 包迁移是即插即用的，见 [skills/lanhu-context-mcp/SKILL.md](skills/lanhu-context-mcp/SKILL.md)。
+MCP 客户端场景：运行 `npx -y @lanhu-context/mcp --stdio`（bin 名 `lanhu-context-mcp`，也支持 `--http`）并在客户端注册；从上游 `lanhu-context-mcp` npm 包迁移是即插即用的，见 [skills/lanhu-context-mcp/SKILL.md](skills/lanhu-context-mcp/SKILL.md)。
 
 ## 包结构
 

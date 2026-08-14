@@ -29,9 +29,6 @@ importers:
       '@lanhu-context/core':
         specifier: workspace:^
         version: link:../core
-      '@lanhu-context/mcp':
-        specifier: workspace:^
-        version: link:../mcp
       citty:
         specifier: ^0.2.2
         version: 0.2.2

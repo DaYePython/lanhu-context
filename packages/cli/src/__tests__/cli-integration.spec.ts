@@ -329,7 +329,7 @@ describe.runIf(enabled)('CLI integration M3 (RUN_INTEGRATION=1)', () => {
     }
   }, 120_000);
 
-  test('meta reports name/imageId/previewUrl/versions summary', async () => {
+  test('meta reports name/projectName/imageId/previewUrl/versions summary', async () => {
     const result = await runCli(['meta', testUrl, '--json'], {
       env: withToken
     });
@@ -337,6 +337,7 @@ describe.runIf(enabled)('CLI integration M3 (RUN_INTEGRATION=1)', () => {
     const envelope = JSON.parse(result.stdout);
     expect(envelope.ok).toBe(true);
     expect(envelope.data.name).toBeTruthy();
+    expect(envelope.data.projectName).toBeTruthy();
     expect(envelope.data.imageId).toBeTruthy();
     expect(envelope.data.versions.count).toBeGreaterThanOrEqual(0);
   }, 60_000);
@@ -439,5 +440,23 @@ describe.runIf(enabled)('CLI integration M3 (RUN_INTEGRATION=1)', () => {
     const envelope = JSON.parse(result.stdout);
     expect(envelope.data.ok).toBe(true);
     expect(envelope.data.checks.length).toBeGreaterThanOrEqual(6);
+  }, 60_000);
+
+  // doctor --out-dir probes the given directory instead of the default,
+  // and the creatable probe leaves nothing behind.
+  test('doctor --out-dir probes the requested directory', async () => {
+    const dir = join(m3Dir, 'doctor-out');
+    const result = await runCli(['doctor', '--out-dir', dir, '--json'], {
+      env: withToken
+    });
+    expect(result.code).toBe(0);
+    const envelope = JSON.parse(result.stdout);
+    const check = envelope.data.checks.find((c: { name: string }) =>
+      c.name.startsWith('out-dir')
+    );
+    expect(check.name).toBe('out-dir-creatable');
+    expect(check.ok).toBe(true);
+    expect(check.detail).toContain(dir);
+    expect(existsSync(dir)).toBe(false);
   }, 60_000);
 });

@@ -19,7 +19,7 @@ export interface DoctorCheck {
   detail: string;
 }
 
-interface CheckResult extends DoctorCheck {
+export interface CheckResult extends DoctorCheck {
   /** §6.2 exit class this check maps to when it fails. */
   exitClass: number;
 }
@@ -86,7 +86,10 @@ async function checkDirWritable(
   }
 }
 
-async function runChecks(ctx: RunnerContext): Promise<CheckResult[]> {
+async function runChecks(
+  ctx: RunnerContext,
+  outDirFlag?: string
+): Promise<CheckResult[]> {
   const checks: CheckResult[] = [];
   const timeoutMs = Math.min(ctx.config.timeout, 10_000);
 
@@ -121,32 +124,39 @@ async function runChecks(ctx: RunnerContext): Promise<CheckResult[]> {
   // 5. cwd writable.
   checks.push(await checkDirWritable('cwd-writable', ctx.config.cwd, EXIT_IO));
 
-  // 6. default output directory can be created.
-  const outDir = resolveOutDir().path;
-  if (existsSync(outDir)) {
-    checks.push(await checkDirWritable('out-dir-writable', outDir, EXIT_IO));
-  } else {
-    try {
-      await mkdir(outDir, { recursive: true });
-      await rm(outDir, { recursive: true, force: true });
-      checks.push({
-        name: 'out-dir-creatable',
-        ok: true,
-        detail: `${outDir} can be created`,
-        exitClass: EXIT_IO
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      checks.push({
-        name: 'out-dir-creatable',
-        ok: false,
-        detail: `${outDir} cannot be created: ${message}`,
-        exitClass: EXIT_IO
-      });
-    }
-  }
+  // 6. output directory (--out-dir, or the default) is usable.
+  checks.push(await checkOutDir(outDirFlag));
 
   return checks;
+}
+
+// Probe the output directory the user will actually write to: the --out-dir
+// argument when provided, else the default <cwd>/.lanhu.local. An existing
+// directory is probed for writability; a missing one is created and removed
+// again to prove it can be created.
+export async function checkOutDir(outDirFlag?: string): Promise<CheckResult> {
+  const outDir = resolveOutDir(outDirFlag).path;
+  if (existsSync(outDir)) {
+    return checkDirWritable('out-dir-writable', outDir, EXIT_IO);
+  }
+  try {
+    await mkdir(outDir, { recursive: true });
+    await rm(outDir, { recursive: true, force: true });
+    return {
+      name: 'out-dir-creatable',
+      ok: true,
+      detail: `${outDir} can be created`,
+      exitClass: EXIT_IO
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      name: 'out-dir-creatable',
+      ok: false,
+      detail: `${outDir} cannot be created: ${message}`,
+      exitClass: EXIT_IO
+    };
+  }
 }
 
 export const doctorCommand = defineCommand({
@@ -154,15 +164,25 @@ export const doctorCommand = defineCommand({
     name: 'doctor',
     description: [
       '环境自检：node 版本 / lanhuapp.com 与 dds.lanhuapp.com 可达性 / token 配置 /',
-      'cwd 可写 / 输出目录可创建。个别检查失败也会全部跑完；全部通过退出码 0，',
+      'cwd 可写 / 输出目录可写或可创建（--out-dir 指定要检查的目录，缺省检查默认的',
+      '<cwd>/.lanhu.local）。个别检查失败也会全部跑完；全部通过退出码 0，',
       '有失败时退出码取失败最多的类别（3 配置 / 5 网络 / 7 本地 IO）。',
       '',
       '示例:',
       '  lanhu doctor',
+      '  lanhu doctor --out-dir .lanhu.local',
       "  lanhu doctor --json | jq '.data.checks[] | select(.ok == false)'"
     ].join('\n')
   },
-  args: { ...globalArgs },
+  args: {
+    'out-dir': {
+      type: 'string',
+      valueHint: 'path',
+      description:
+        '要检查的输出目录（与 `lanhu context --out-dir` 同义；缺省检查默认的 <cwd>/.lanhu.local）'
+    },
+    ...globalArgs
+  },
   run: ({ args, rawArgs }) =>
     executeCommand({
       command: 'doctor',
@@ -170,7 +190,13 @@ export const doctorCommand = defineCommand({
       args,
       rawArgs,
       handler: async ctx => {
-        const results = await ctx.timed('doctor-checks', () => runChecks(ctx));
+        const outDirFlag =
+          typeof args['out-dir'] === 'string' && args['out-dir'] !== ''
+            ? (args['out-dir'] as string)
+            : undefined;
+        const results = await ctx.timed('doctor-checks', () =>
+          runChecks(ctx, outDirFlag)
+        );
         const failed = results.filter(check => !check.ok);
         const checks: DoctorCheck[] = results.map(({ name, ok, detail }) => ({
           name,

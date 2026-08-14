@@ -1,6 +1,6 @@
 # @lanhu-context/cli
 
-> 把蓝湖（Lanhu）设计稿 URL 转成 AI 可直接消费的前端实现上下文——管道式 CLI，bin：`lanhu` / `lanhu-context`。
+> 把蓝湖（Lanhu）设计稿 URL 转成 AI 可直接消费的前端实现上下文——管道式 CLI，bin：`lanhu` / `lanhu-context`。MCP server 见 [`@lanhu-context/mcp`](https://www.npmjs.com/package/@lanhu-context/mcp)。
 
 [仓库主页 / 完整文档](https://github.com/DaYePython/lanhu-context)（[English](https://github.com/DaYePython/lanhu-context/blob/main/README.md)）
 
@@ -29,7 +29,6 @@ lanhu auth test "$URL"   # exit 0 = token 有效
 | `preview` | 预览图（`-o <file>` 落盘 / `-o -` 直出 PNG） |
 | `context` | 一键组装 `context.md` + `preview.png` |
 | `auth` / `doctor` | 凭据管理与六项自检 |
-| `mcp` | 启动 MCP server（stdio / streamable HTTP） |
 
 ## 用法示例
 
