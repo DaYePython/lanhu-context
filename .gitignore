@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+
+# local-only files (tokens, generated artifacts)
+*.local
+.env*
+!.env.local.example
+.claude/settings.local.json
+
+.DS_Store

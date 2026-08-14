@@ -1,0 +1,36 @@
+{
+  "name": "lanhu-context-cli",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CLI for turning Lanhu design URLs into AI-ready design context: parse/schema/html/context pipeline commands",
+  "license": "MIT",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "bin": {
+    "lanhu": "./dist/main.js",
+    "lanhu-context": "./dist/main.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@lanhu-context/core": "workspace:^",
+    "citty": "^0.2.2",
+    "consola": "^3.4.2",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.0",
+    "vitest": "^4.1.4"
+  }
+}

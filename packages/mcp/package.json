@@ -1,0 +1,21 @@
+{
+  "name": "@lanhu-context/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP compatibility layer for lanhu-context (placeholder, implemented in M4)",
+  "license": "MIT",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "build": "echo \"@lanhu-context/mcp: placeholder package, build arrives in M4\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@lanhu-context/core": "workspace:^"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}
