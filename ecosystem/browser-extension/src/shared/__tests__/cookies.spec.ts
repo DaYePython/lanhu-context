@@ -40,7 +40,7 @@ describe('sortCookies', () => {
       { name: 'deep', value: '2', path: '/web/detail' },
       { name: 'mid', value: '3', path: '/web' }
     ]);
-    expect(sorted.map((c) => c.name)).toEqual(['deep', 'mid', 'root']);
+    expect(sorted.map(c => c.name)).toEqual(['deep', 'mid', 'root']);
   });
 
   it('is stable for equal path lengths', () => {
@@ -48,7 +48,7 @@ describe('sortCookies', () => {
       { name: 'a', value: '1', path: '/x' },
       { name: 'b', value: '2', path: '/y' }
     ]);
-    expect(sorted.map((c) => c.name)).toEqual(['a', 'b']);
+    expect(sorted.map(c => c.name)).toEqual(['a', 'b']);
   });
 
   it('treats a missing path as "/"', () => {

@@ -78,12 +78,12 @@ export function buildMenuItem(spec: MenuItemSpec): HTMLElement {
   // Listeners sit on the row so clicks anywhere inside the nesting count.
   // The host closes its menu on a bubbling mouseup, which would tear the
   // popover down before click ever fires.
-  row.addEventListener('mouseup', (event) => event.stopPropagation());
-  row.addEventListener('contextmenu', (event) => {
+  row.addEventListener('mouseup', event => event.stopPropagation());
+  row.addEventListener('contextmenu', event => {
     event.preventDefault();
     event.stopPropagation();
   });
-  row.addEventListener('click', (event) => {
+  row.addEventListener('click', event => {
     event.preventDefault();
     event.stopPropagation();
     spec.onSelect();
@@ -125,7 +125,7 @@ export function installMenuInjector(
 
   if (root instanceof HTMLElement) scan(root);
 
-  const observer = new MutationObserver((records) => {
+  const observer = new MutationObserver(records => {
     for (const record of records) {
       for (const added of record.addedNodes) scan(added);
     }

@@ -1,7 +1,4 @@
-import type {
-  BackgroundMessage,
-  BackgroundReply
-} from '../shared/protocol';
+import type { BackgroundMessage, BackgroundReply } from '../shared/protocol';
 import { buildDesignUrl, parseDesignRefFromHash } from '../shared/url';
 import { copyText } from './clipboard';
 import { installMenuInjector, type MenuItemSpec } from './menu';
@@ -56,7 +53,9 @@ async function copyCookies(): Promise<void> {
 
 async function sendCookies(): Promise<void> {
   const reply = await ask({ type: 'send-cookies' });
-  toast(reply.ok ? '已发送到本机 lanhu auth listen' : `发送失败：${reply.error}`);
+  toast(
+    reply.ok ? '已发送到本机 lanhu auth listen' : `发送失败：${reply.error}`
+  );
 }
 
 const specs: MenuItemSpec[] = [

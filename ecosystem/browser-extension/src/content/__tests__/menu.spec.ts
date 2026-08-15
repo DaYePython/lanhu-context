@@ -152,8 +152,8 @@ describe('injectInto', () => {
   it('leaves the host rows untouched', () => {
     const dialog = makeDialog();
     injectInto(dialog, specs);
-    const titles = [...dialog.querySelectorAll(`.${TITLE_CLASS}`)].map((e) =>
-      e.textContent
+    const titles = [...dialog.querySelectorAll(`.${TITLE_CLASS}`)].map(
+      e => e.textContent
     );
     expect(titles.slice(0, HOST_ITEMS)).toEqual(['复制选中图层链接', '返回']);
   });
@@ -227,7 +227,7 @@ describe('installMenuInjector', () => {
     const dialog = makeDialog();
     document.body.append(dialog);
 
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await new Promise(resolve => setTimeout(resolve, 30));
     expect(itemCount(dialog)).toBe(HOST_ITEMS);
   });
 });

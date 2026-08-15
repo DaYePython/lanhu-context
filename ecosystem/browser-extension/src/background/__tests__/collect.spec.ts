@@ -34,7 +34,9 @@ describe('sendCookieHeader', () => {
     const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('http://127.0.0.1:7623/token');
     expect(init.method).toBe('POST');
-    expect(JSON.parse(init.body as string)).toEqual({ lanhuToken: 'sid=FAKE1' });
+    expect(JSON.parse(init.body as string)).toEqual({
+      lanhuToken: 'sid=FAKE1'
+    });
   });
 
   it('reports a non-2xx status as a failure', async () => {

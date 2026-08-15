@@ -54,7 +54,9 @@ describe('parseDesignRefFromHash', () => {
   });
 
   it('returns null when there is no hash query at all', () => {
-    expect(parseDesignRefFromHash('https://lanhuapp.com/web/#/item')).toBeNull();
+    expect(
+      parseDesignRefFromHash('https://lanhuapp.com/web/#/item')
+    ).toBeNull();
     expect(parseDesignRefFromHash('https://lanhuapp.com/web/')).toBeNull();
   });
 });

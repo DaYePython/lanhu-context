@@ -23,7 +23,7 @@ export function sortCookies(cookies: CookieLike[]): CookieLike[] {
  */
 export function formatCookieHeader(cookies: CookieLike[]): string {
   return sortCookies(cookies)
-    .filter((cookie) => cookie.name.length > 0)
-    .map((cookie) => `${cookie.name}=${cookie.value}`)
+    .filter(cookie => cookie.name.length > 0)
+    .map(cookie => `${cookie.name}=${cookie.value}`)
     .join('; ');
 }
