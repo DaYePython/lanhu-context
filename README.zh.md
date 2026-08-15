@@ -12,7 +12,7 @@
 - **默认机器可读** —— `--json` 输出统一 envelope（`ok` / `data` / `error` / `warnings` / `meta`）+ 分类退出码；错误结构化为 `{code, severity, message, hint}`。
 - **分级严重性** —— tokens / preview 等附属阶段失败只降级为 warning，不拖垮核心产物（`fatal` / `degraded` / `notice` 三级）。
 - **幂等输出** —— 重跑会比对文件内容并报告 `written` / `skipped` / `overwritten`；`--force` 强制重写。
-- **凭据工具链** —— `lanhu auth set/test` 与 `lanhu doctor` 管理和诊断 token（整段浏览器 Cookie）；token 绝不回显。
+- **凭据工具链** —— `lanhu auth set/test/listen` 与 `lanhu doctor` 管理和诊断 token（整段浏览器 Cookie）；token 绝不回显。配套的[浏览器扩展](ecosystem/browser-extension)可在蓝湖右键菜单里一键复制设计稿链接/Cookie，或把 Cookie 直接推送给 `lanhu auth listen`。
 - **MCP 兼容** —— 独立 bin `lanhu-context-mcp`（npm 包 `@lanhu-context/mcp`）以 stdio 或 streamable HTTP 提供与上游完全一致的 `get_design_context` 工具契约。
 - **自带 Agent skills** —— [skills/](skills/) 内置两个 skill，教 Claude Code 等 Agent 正确驱动 CLI 与 MCP server。
 
@@ -56,6 +56,8 @@ lanhu doctor        # 自检环境/凭据，exit 0 = 就绪
 lanhu auth set          # 从 stdin 读 token，不落命令行
 lanhu auth test "$URL"  # exit 0 = token 有效
 ```
+
+想一键配置凭据？构建仓库自带的[浏览器扩展](ecosystem/browser-extension)（`pnpm --filter @lanhu-context/browser-extension build` 后在 `chrome://extensions` 开发者模式加载 `dist/`），终端运行 `lanhu auth listen`，然后在蓝湖设计稿页面右键点「发送 cookies 到本机」——接收端只接受扩展来源（`chrome-extension://` Origin）、仅监听 127.0.0.1、收到一次即退出，凭据以 0600 权限写入用户级配置。详见 [ecosystem/browser-extension/README.md](ecosystem/browser-extension/README.md)。
 
 要让 Agent 学会驱动 CLI，用 [find-skills](https://github.com/vercel-labs/skills) 把本仓的 lanhu-context-cli skill 装到你的 Agent（默认项目级，加 `-g` 全局安装；`-a <agent>` 指定目标 agent，部分 agent 不支持全局安装会标 ✗ 跳过）：
 

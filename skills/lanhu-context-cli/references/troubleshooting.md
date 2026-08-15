@@ -23,6 +23,7 @@ $ lanhu parse "tid=aaa&pid=bbb" --json
 - `USAGE_ERROR` 分支（flag 组合非法，实测）：
   - `context --inline --json` → `context --inline 与 --json 互斥：--inline 的 stdout 即 context 正文本体（需要 envelope 请去掉 --inline）`
   - `preview --json -o -` → `preview --json 必须配 -o <file>：-o - 的 stdout 是 PNG 二进制本体，不能混入 envelope`
+  - `auth listen --port 0` → `--port 必须是 1-65535 的整数，收到 0`（`--timeout` 非正数同理）
   - 动作：按 message 修正组合；`lanhu <command> --help` 看合法用法。
 
 ## exit 3 — 配置/凭据缺失（`TOKEN_MISSING` / `CONFIG_INVALID`）
@@ -40,6 +41,20 @@ $ lanhu meta "$URL" --json
   1. `lanhu auth status --json` 看链路上到底读到了什么（`data.token.source` / `envFilePath` / `userConfigExists`）。
   2. 引导用户配置：交互 `lanhu auth set`（会打印获取 Cookie 的分步引导，图文教程：https://lanhu.refineup.com/guide/get-lanhu-token ）；CI/脚本 `printf "%s\n" "$LANHU_TOKEN" | lanhu auth set --token-stdin`；或写 `<cwd>/.env.local`。
   3. 注意 env 文件默认取 `<cwd>/.env.local`——从别的目录运行时加 `--cwd <项目根>` 或 `--env-file <path>`。
+
+- `auth listen` 等待超时分支（实测，`--timeout 1` 制造超时）：
+
+```text
+$ lanhu auth listen --timeout 1 --json
+listening  http://127.0.0.1:7623/token（仅接受 chrome-extension:// 来源）
+           在蓝湖设计稿页面右键点击「发送 cookies 到本机」，1s 内有效
+ ERROR  TOKEN_MISSING: 等待浏览器扩展发送 Cookie 超时，未写入任何凭据
+{"ok":false,"command":"auth listen","error":{"code":"TOKEN_MISSING","severity":"fatal","message":"等待浏览器扩展发送 Cookie 超时，未写入任何凭据","hint":"在蓝湖页面右键点击「发送 cookies 到本机」，或改用 `lanhu auth set`","retryable":false}}
+# exit 3
+```
+
+  - 原因：超时窗口内没点扩展菜单项、扩展没装/没重新加载、或扩展与 CLI 端口不一致。
+  - 动作：重跑 `lanhu auth listen`（可加 `--timeout 300` 放宽窗口），在超时前于蓝湖设计稿页面右键点「发送 cookies 到本机」；确认扩展已按 `ecosystem/browser-extension/README.md` 加载且端口一致；不方便装扩展就改走 `lanhu auth set`。
 
 ## exit 4 — 认证/权限/空结果（`AUTH_EXPIRED` / `ACCESS_DENIED` / `EMPTY_RESULT` / `DESIGN_NOT_FOUND` / `TRANSCODE_NOT_ENABLED`）
 
@@ -85,6 +100,7 @@ $ lanhu meta "$URL" --timeout 1 --retries 0 --json
 
 - 症状：context/assets/preview 落盘失败。
 - 动作：检查 `--out-dir`/`-o` 目录是否存在、可写、磁盘是否满；`lanhu doctor --out-dir <实际输出目录> --json` 看 `cwd-writable` / `out-dir-writable`（目录已存在）或 `out-dir-creatable`（目录还不存在）两项——`--out-dir` 缺省时 doctor 检查默认的 `<cwd>/.lanhu.local`。
+- `auth listen` 分支：监听端口被占用（message 形如 `无法在 127.0.0.1:7623 上监听：…EADDRINUSE…`）。动作：换端口 `lanhu auth listen --port 7624`，并同步修改扩展 `src/shared/constants.ts` 的 `DEFAULT_BRIDGE_PORT` 后重新 build 加载。
 
 ## exit 8 — `--strict` 升级的 warning
 

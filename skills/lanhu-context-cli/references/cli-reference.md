@@ -16,7 +16,7 @@
 | `lanhu assets <url>` | 报告 | 切图映射（本地路径 → 远程 URL）；`--download` 才实际下载 | 映射 JSON / 下载报告 envelope |
 | `lanhu preview <url>` | 直出 | 预览图 PNG | `-o <file>` 写文件 + 报告（重复执行安全）；`-o -` PNG 二进制直出（无 envelope，状态看退出码 + stderr） |
 | `lanhu context <url>` | 复合 | 一次产出 context.md（HTML + 切图映射 + tokens + 实现指引）+ preview.png | 文件清单 envelope；`--inline` 时 context 正文直出（摘要走 stderr） |
-| `lanhu auth set\|status\|test` | 报告 | 凭据写入（0600）/ 状态（来源 + 掩码指纹）/ 验证 token 是否有效 | 状态 envelope，永不含 token 明文 |
+| `lanhu auth set\|status\|test\|listen` | 报告 | 凭据写入（0600）/ 状态（来源 + 掩码指纹）/ 验证 token 是否有效 / 一次性接收浏览器扩展发来的 Cookie 并写入用户级配置 | 状态 envelope，永不含 token 明文（listen 的监听提示走 stderr） |
 | `lanhu doctor` | 报告 | 自检：node 版本 / lanhuapp.com 与 dds.lanhuapp.com 可达性 / token / cwd 可写 / 输出目录可写或可创建（`--out-dir` 指定要检查的目录，缺省检查默认的 `<cwd>/.lanhu.local`） | 检查报告；个别失败仍全部跑完，退出码取失败最多的类别（3/5/7） |
 
 通道纪律：stdout 只承载数据/产物，日志与进度走 stderr。直出类命令无论有无 TTY 都原样输出内容本体；显式 `--json` 才改为 envelope（内容放进 `data`）。两条边界：`context --inline` 与 `--json` 互斥；`preview --json` 必须配 `-o <file>`——违反均为 `USAGE_ERROR`（exit 2）。
@@ -60,9 +60,23 @@
 | `assets` | `-o, --output <dir>` | — | 下载保存目录（最终交付目录，推荐 `src/assets/<语义化页面名>`），同时作为映射本地路径前缀（优先于 `--assets-dir`） |
 | `preview` | `-o, --output <file\|->` | — | PNG 输出位置：文件路径（重复执行安全，内容相同自动跳过）或 `-` 直接输出二进制到 stdout |
 | `auth set` | `--token-stdin` / `--dds-token-stdin` | `false` | 非 TTY 必须用：从 stdin 读 token（两者同传时第 1 行 LANHU_TOKEN、第 2 行 DDS_TOKEN）；TTY 无管道时回落为交互隐藏输入，只提示对应 token |
+| `auth listen` | `--port <port>` | `7623` | 监听端口（1-65535，非法值 exit 2）；需与浏览器扩展 `src/shared/constants.ts` 的 `DEFAULT_BRIDGE_PORT` 一致 |
+| `auth listen` | `--timeout <s>` | `120` | 等待超时**秒**数（注意：覆盖了全局 `--timeout <ms>` 的毫秒语义）；超时未收到即 exit 3（`TOKEN_MISSING`），不写任何凭据 |
 | `doctor` | `--out-dir <path>` | `<cwd>/.lanhu.local` | 要检查的输出目录（与 `context --out-dir` 同义），检查其可写或可创建 |
 
 `auth test [url]`：位置参数缺省时回退 `LANHU_TEST_URL` 环境变量；输出 `data: {ok, checkedAt, tokenSource, design:{name, imageId}, hint}`。
+
+`auth listen`：配合仓库 `ecosystem/browser-extension` 浏览器扩展使用——终端启动后在蓝湖设计稿页面右键点「发送 cookies 到本机」。安全模型：只接受 `Origin: chrome-extension://` 的请求（网页无法伪造该头，非法来源一律 403 且不写盘）+ 仅监听 127.0.0.1 + 收到一次即退出 + 超时自动退出。成功输出（实测，FAKE 演示 token，路径缩略）：
+
+```text
+$ lanhu auth listen --json
+listening  http://127.0.0.1:7623/token（仅接受 chrome-extension:// 来源）
+           在蓝湖设计稿页面右键点击「发送 cookies 到本机」，120s 内有效
+ℹ 运行 `lanhu auth test <url>` 验证 token 活性
+{"ok":true,"command":"auth listen","data":{"path":"…/.config/lanhu/config.json","mode":"0600","updated":["LANHU_TOKEN"],"fingerprint":"sid=…AKE2 (length 19)"},"warnings":[],"meta":{"version":"0.5.0","durationMs":1374}}
+```
+
+前两行监听提示与 ℹ 摘要走 stderr，stdout 只有末行 envelope；`data.fingerprint` 是掩码指纹，永不含 token 明文。
 
 ### `--unit-scale`：倍率怎么定（完整版）
 

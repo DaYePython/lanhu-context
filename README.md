@@ -12,7 +12,7 @@
 - **Machine-readable by default** — `--json` gives a uniform envelope (`ok` / `data` / `error` / `warnings` / `meta`) plus classified exit codes; errors carry `{code, severity, message, hint}`.
 - **Graded severity** — optional stages (tokens, preview) failing degrade with warnings instead of killing the run (`fatal` / `degraded` / `notice`).
 - **Idempotent outputs** — re-runs compare file content and report `written` / `skipped` / `overwritten`; `--force` to override.
-- **Credential tooling** — `lanhu auth set/test` and `lanhu doctor` for token (browser Cookie) management and diagnosis; tokens are never echoed.
+- **Credential tooling** — `lanhu auth set/test/listen` and `lanhu doctor` for token (browser Cookie) management and diagnosis; tokens are never echoed. A companion [browser extension](ecosystem/browser-extension) copies the design URL / cookies from Lanhu's own context menu and can push them straight to `lanhu auth listen`.
 - **MCP compatibility** — the standalone `lanhu-context-mcp` bin (npm `@lanhu-context/mcp`) serves the upstream `lanhu-context-mcp` `get_design_context` tool contract over stdio or streamable HTTP.
 - **Agent skills included** — ready-made skills under [skills/](skills/) teach Claude Code (and other agents) how to drive the CLI and the MCP server.
 
@@ -56,6 +56,8 @@ If `doctor` reports a credential problem, configure your Lanhu credential (`LANH
 lanhu auth set          # reads token from stdin, keeps it off the command line
 lanhu auth test "$URL"  # exit 0 = token works
 ```
+
+Prefer one-click credentials? Build the bundled [browser extension](ecosystem/browser-extension) (`pnpm --filter @lanhu-context/browser-extension build`, then load `dist/` via `chrome://extensions` developer mode), run `lanhu auth listen`, and right-click "发送 cookies 到本机" on any Lanhu design page — the receiver only accepts requests originating from the extension (`chrome-extension://` origin), listens on 127.0.0.1 once, and stores the credential with mode 0600. See [ecosystem/browser-extension/README.md](ecosystem/browser-extension/README.md).
 
 To teach your agent how to drive the CLI, install the bundled lanhu-context-cli skill with [find-skills](https://github.com/vercel-labs/skills) (project-scoped by default; add `-g` for a global install and `-a <agent>` to pick target agents — agents that don't support global installs are skipped with a ✗):
 

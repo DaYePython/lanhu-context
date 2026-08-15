@@ -111,11 +111,11 @@ diff /tmp/lanhu-tokens.css src/styles/design-tokens.css
 | 退出码 | 典型 error.code | 动作 |
 | --- | --- | --- |
 | 2 | `URL_MISSING_TID` / `URL_MISSING_PID` / `URL_MISSING_IMAGE_ID` / `USAGE_ERROR` | 检查 URL 是否含 tid/pid/image_id 三参数（从浏览器地址栏复制完整 URL）；`USAGE_ERROR` 按 message 修正 flag 组合 |
-| 3 | `TOKEN_MISSING` / `CONFIG_INVALID` | 引导用户 `lanhu auth set` 或写 `<cwd>/.env.local`；核对 `--cwd`/`--env-file` 路径 |
+| 3 | `TOKEN_MISSING` / `CONFIG_INVALID` | 引导用户 `lanhu auth set` 或写 `<cwd>/.env.local`；装了配套浏览器扩展时可 `lanhu auth listen` 一键接收（等待超时同为 exit 3——重跑并在超时前于蓝湖页面右键点「发送 cookies 到本机」）；核对 `--cwd`/`--env-file` 路径 |
 | 4 | `AUTH_EXPIRED` / `ACCESS_DENIED` / `EMPTY_RESULT` / `TRANSCODE_NOT_ENABLED` | `lanhu auth test "$URL" --json` 复核；过期则引导重新登录蓝湖取 Cookie → `lanhu auth set`；`EMPTY_RESULT` 按 token → URL → 转码开关顺序排查；`TRANSCODE_NOT_ENABLED` 是设计稿上传时没开「设计图转代码」，引导在蓝湖删除后重新上传并勾选该选项，转码完成后重试 |
 | 5 | `UPSTREAM_TIMEOUT` / `UPSTREAM_ERROR` / `SCHEMA_FIELD_MISSING` | retryable：加 `--retries 3` / 调大 `--timeout`；`SCHEMA_FIELD_MISSING` 是设计稿未转码完成，引导在蓝湖重新处理 |
 | 8 | `--strict` 升级的 warning | 看 stderr 列出的 warning 码；确属可接受的附属内容缺失则去掉 `--strict` 重跑 |
-| 1/6/7 | `UNKNOWN` / `TRANSFORM_FAILED` / `IO_WRITE_FAILED` | `lanhu doctor --json` 环境自检；7 检查目录可写与磁盘空间；6 落盘 schema 复查（`lanhu schema "$URL" > page.schema.json`） |
+| 1/6/7 | `UNKNOWN` / `TRANSFORM_FAILED` / `IO_WRITE_FAILED` | `lanhu doctor --json` 环境自检；7 检查目录可写与磁盘空间（`auth listen` 报 7 是端口被占用 → 换 `--port` 并同步扩展常量）；6 落盘 schema 复查（`lanhu schema "$URL" > page.schema.json`） |
 
 对 URL/权限/token 类错误（exit 2/3/4）**绝不重试**——重试绕不过凭据问题。
 
