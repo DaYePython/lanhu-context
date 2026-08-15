@@ -15,7 +15,15 @@ const REQUEST = { teamId: 't', projectId: 'p', imageId: 'i' };
 describe('LanhuClient — retry policy', () => {
   test('retries network failures up to `retries` and then succeeds', async () => {
     let calls = 0;
-    const fetchImpl = (async () => {
+    const fetchImpl = (async (
+      input: string | URL | Request,
+      init?: RequestInit
+    ) => {
+      // The projectName fallback hits multi_info; answer it directly so
+      // `calls` counts only the /api/project/image attempts under test.
+      if (new Request(input, init).url.includes('/api/project/multi_info')) {
+        return jsonResponse({ code: '00000', result: { name: 'Project A' } });
+      }
       calls += 1;
       if (calls <= 2) throw new TypeError('fetch failed');
       return jsonResponse({
@@ -32,6 +40,7 @@ describe('LanhuClient — retry policy', () => {
     });
     const meta = await client.getDesignMeta(REQUEST);
     expect(meta.name).toBe('Design A');
+    expect(meta.projectName).toBe('Project A');
     expect(calls).toBe(3);
   });
 

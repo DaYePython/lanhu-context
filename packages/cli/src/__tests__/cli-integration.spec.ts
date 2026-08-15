@@ -64,8 +64,18 @@ interface CliResult {
 
 // Base child env: strip Lanhu credentials so each case opts in explicitly,
 // and run inside a temp cwd so the repo-root .env.local is never picked up.
+// XDG_CONFIG_HOME/APPDATA point at an empty temp dir so the developer's real
+// user-level config (~/.config/lanhu/config.json, written by `lanhu auth set`)
+// can never satisfy a "no token" scenario.
+const isolatedConfigHome = mkdtempSync(join(tmpdir(), 'lanhu-cli-xdg-'));
+
 function childEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env, ...extra };
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    XDG_CONFIG_HOME: isolatedConfigHome,
+    APPDATA: isolatedConfigHome,
+    ...extra
+  };
   for (const key of ['LANHU_TOKEN', 'DDS_TOKEN', 'ENV_FILE', 'PROMPT_LANG']) {
     if (!(key in extra)) delete env[key];
   }

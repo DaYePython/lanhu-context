@@ -269,12 +269,13 @@ export class LanhuClient implements DesignSourceClient {
     });
   }
 
-  // Resolve the latest version id for a design from the project listing.
-  private async getVersionIdByImageId({
-    teamId,
-    projectId,
-    imageId
-  }: LanhuDesignRequest): Promise<string> {
+  // Fetch the project listing (multi_info) for a design's project. The
+  // listing carries both the per-image latest_version ids and, at its top
+  // level, the project name.
+  private async fetchMultiInfo(
+    { teamId, projectId }: LanhuDesignRequest,
+    imgLimit = 500
+  ): Promise<Record<string, unknown>> {
     return this.guard('/api/project/multi_info', async () => {
       const body = await this.main<LanhuApiResponse<Record<string, unknown>>>(
         '/api/project/multi_info',
@@ -282,16 +283,21 @@ export class LanhuClient implements DesignSourceClient {
           query: {
             team_id: teamId,
             project_id: projectId,
-            img_limit: 500,
+            img_limit: imgLimit,
             detach: 1
           }
         }
       );
-      return pickLatestVersionId(
-        unwrapEnvelope(body, 'result', '/api/project/multi_info'),
-        imageId
-      );
+      return unwrapEnvelope(body, 'result', '/api/project/multi_info');
     });
+  }
+
+  // Resolve the latest version id for a design from the project listing.
+  private async getVersionIdByImageId(
+    request: LanhuDesignRequest
+  ): Promise<string> {
+    const result = await this.fetchMultiInfo(request);
+    return pickLatestVersionId(result, request.imageId);
   }
 
   // Load the DDS schema document behind a version id.
@@ -344,11 +350,28 @@ export class LanhuClient implements DesignSourceClient {
       ? (result.versions as Array<{ json_url?: unknown }>)
       : [];
     const latestJsonUrl = versions[0]?.json_url;
+
+    // The live /api/project/image payload no longer carries project_name;
+    // fall back to the project listing's top-level `name`. The lookup is
+    // auxiliary: any failure degrades to an absent projectName instead of
+    // failing the whole meta request.
+    let projectName = pickProjectName(result);
+    if (projectName === undefined) {
+      try {
+        const candidate = (await this.fetchMultiInfo(request, 1)).name;
+        if (typeof candidate === 'string' && candidate.length > 0) {
+          projectName = candidate;
+        }
+      } catch {
+        // projectName stays undefined.
+      }
+    }
+
     return {
       id: request.imageId,
       name: String(name ?? request.imageId),
       url: pickPreviewUrl(result),
-      projectName: pickProjectName(result),
+      projectName,
       versions: {
         count: versions.length,
         latestHasSketchJson:

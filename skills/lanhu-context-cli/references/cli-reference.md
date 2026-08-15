@@ -9,7 +9,7 @@
 | 命令 | 类别 | 职责 | stdout 行为 |
 | --- | --- | --- | --- |
 | `lanhu parse <url\|->` | 报告 | URL/query 串 → `{teamId, projectId, imageId}` | envelope（无 TTY 自动 `--json`） |
-| `lanhu meta <url\|->` | 报告 | 元数据 `{name, imageId, previewUrl, versions:{count, latestHasSketchJson}}` | 同上 |
+| `lanhu meta <url\|->` | 报告 | 元数据 `{name, projectName, imageId, previewUrl, versions:{count, latestHasSketchJson}}` | 同上 |
 | `lanhu schema <url>` | 直出 | 下载原始 DDS schema JSON | schema JSON 本体（存文件复查或喂给 `html -`） |
 | `lanhu html <url\|->` | 直出 | 设计稿 → HTML+CSS（或 Tailwind）；`-` 时从 stdin 读 schema 离线转换，不请求蓝湖 | HTML 本体 |
 | `lanhu tokens <url>` | 直出 | 提取视觉 token（渐变/边框/圆角/阴影/透明度） | `--format json`（默认）条目数组 / `--format css` `:root {}` |
@@ -17,7 +17,7 @@
 | `lanhu preview <url>` | 直出 | 预览图 PNG | `-o <file>` 写文件 + 报告（重复执行安全）；`-o -` PNG 二进制直出（无 envelope，状态看退出码 + stderr） |
 | `lanhu context <url>` | 复合 | 一次产出 context.md（HTML + 切图映射 + tokens + 实现指引）+ preview.png | 文件清单 envelope；`--inline` 时 context 正文直出（摘要走 stderr） |
 | `lanhu auth set\|status\|test` | 报告 | 凭据写入（0600）/ 状态（来源 + 掩码指纹）/ 验证 token 是否有效 | 状态 envelope，永不含 token 明文 |
-| `lanhu doctor` | 报告 | 自检：node 版本 / lanhuapp.com 与 dds.lanhuapp.com 可达性 / token / cwd 可写 / out-dir 可创建 | 检查报告；个别失败仍全部跑完，退出码取失败最多的类别（3/5/7） |
+| `lanhu doctor` | 报告 | 自检：node 版本 / lanhuapp.com 与 dds.lanhuapp.com 可达性 / token / cwd 可写 / 输出目录可写或可创建（`--out-dir` 指定要检查的目录，缺省检查默认的 `<cwd>/.lanhu.local`） | 检查报告；个别失败仍全部跑完，退出码取失败最多的类别（3/5/7） |
 
 通道纪律：stdout 只承载数据/产物，日志与进度走 stderr。直出类命令无论有无 TTY 都原样输出内容本体；显式 `--json` 才改为 envelope（内容放进 `data`）。两条边界：`context --inline` 与 `--json` 互斥；`preview --json` 必须配 `-o <file>`——违反均为 `USAGE_ERROR`（exit 2）。
 
@@ -29,21 +29,23 @@
 | `--dds-token <string>` | 复用 `--token` | `DDS_TOKEN` | dds.lanhuapp.com 凭据 |
 | `--timeout <ms>` | `30000` | — | HTTP 超时 |
 | `--retries <n>` | `2` | — | 仅对可重试错误（网络超时/5xx/下载）重试，指数退避 |
-| `--env-file <path>`（别名 `-env-path`） | `<cwd>/.env.local` | — | env 文件路径 |
+| `--env-file <path>`（别名 `--env-path`） | `<cwd>/.env.local` | — | env 文件路径 |
 | `--cwd <path>` | 进程 cwd | — | 指定工作目录：env 文件查找与相对路径都以它为基准 |
 | `--json` | `false` | — | 以统一 JSON 结构输出结果（含 ok/data/error/warnings 字段）；输出报告的命令在 stdout 接管道或重定向时自动开启 |
 | `-q, --quiet` | `false` | — | stderr 只保留 error |
 | `--verbose` | `false` | — | stderr 输出 debug 日志（含各阶段耗时） |
 | `--no-color`（即 `--color=false`，默认 `--color` 为 true） | — | `NO_COLOR` | 禁用颜色 |
 | `--strict` | `false` | — | 把所有 warning 当作失败处理（退出码 8），适合 CI 严格把关 |
-| `--lang <zh-CN\|en-US>`（别名 `-prompt-lang`） | `en-US` | — | context.md 等指引文本语言 |
+| `--lang <zh-CN\|en-US>`（别名 `--prompt-lang`） | `en-US` | — | context.md 等指引文本语言 |
 | `--version` | — | — | 版本；与 `--json` 组合输出 `{"name":"@lanhu-context/cli","version":"0.2.0","node":"v22.22.0"}` |
+
+别名一律用双横线（`--env-path` / `--prompt-lang` / `--tailwindcss`）；`--help` 里把别名显示成单横线（如 `-env-path`）只是 citty 的展示格式，单横线写法不会被解析。
 
 ## 命令级 flags
 
 | 命令 | flag | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `html` / `context` | `--tailwind`（旧名 `-tailwindcss` 已废弃仍可用） | `false` | CSS → Tailwind 工具类 |
+| `html` / `context` | `--tailwind`（旧名 `--tailwindcss` 已废弃仍可用） | `false` | CSS → Tailwind 工具类 |
 | `html` / `context` | `--tw-version <3\|4>` | `3` | Tailwind 引擎版本 |
 | `html` / `context` | `--unit-scale <n>` | — | 输出尺寸的缩放倍数（设计稿是 2 倍图时用 `0.5` 得到 1 倍尺寸） |
 | `html` / `context` | `--skip-slices` | `false` | 不处理切图：跳过切图定位与下载清单，图片保持蓝湖远程 URL（只看布局时更快） |
@@ -58,6 +60,7 @@
 | `assets` | `-o, --output <dir>` | — | 下载保存目录，同时作为映射本地路径前缀（优先于 `--assets-dir`） |
 | `preview` | `-o, --output <file\|->` | — | PNG 输出位置：文件路径（重复执行安全，内容相同自动跳过）或 `-` 直接输出二进制到 stdout |
 | `auth set` | `--token-stdin` / `--dds-token-stdin` | `false` | 非 TTY 必须用：从 stdin 读 token（两者同传时第 1 行 LANHU_TOKEN、第 2 行 DDS_TOKEN） |
+| `doctor` | `--out-dir <path>` | `<cwd>/.lanhu.local` | 要检查的输出目录（与 `context --out-dir` 同义），检查其可写或可创建 |
 
 `auth test [url]`：位置参数缺省时回退 `LANHU_TEST_URL` 环境变量；输出 `data: {ok, checkedAt, tokenSource, design:{name, imageId}, hint}`。
 

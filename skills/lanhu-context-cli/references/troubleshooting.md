@@ -84,7 +84,7 @@ $ lanhu meta "$URL" --timeout 1 --retries 0 --json
 ## exit 7 — 本地 IO（`IO_WRITE_FAILED`）
 
 - 症状：context/assets/preview 落盘失败。
-- 动作：检查 `--out-dir`/`-o` 目录是否存在、可写、磁盘是否满；`lanhu doctor --json` 看 `cwd-writable` / `out-dir-creatable` 两项。
+- 动作：检查 `--out-dir`/`-o` 目录是否存在、可写、磁盘是否满；`lanhu doctor --out-dir <实际输出目录> --json` 看 `cwd-writable` / `out-dir-writable`（目录已存在）或 `out-dir-creatable`（目录还不存在）两项——`--out-dir` 缺省时 doctor 检查默认的 `<cwd>/.lanhu.local`。
 
 ## exit 8 — `--strict` 升级的 warning
 

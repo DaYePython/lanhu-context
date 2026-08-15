@@ -336,6 +336,11 @@ describe('LanhuClient — meta fallbacks', () => {
       if (url.pathname === '/api/project/image') {
         return jsonResponse(bodies[call++]);
       }
+      // The bare-result variant triggers the multi_info fallback; an empty
+      // project listing must leave projectName undefined.
+      if (url.pathname === '/api/project/multi_info') {
+        return jsonResponse({ code: '00000', result: {} });
+      }
       return undefined;
     });
 
@@ -359,6 +364,55 @@ describe('LanhuClient — meta fallbacks', () => {
       url: undefined,
       projectName: undefined,
       versions: { count: 0, latestHasSketchJson: false }
+    });
+  });
+
+  // The current /api/project/image payload carries no project_name at all
+  // (verified against the live API); the project name lives on the
+  // multi_info listing as its top-level `name`.
+  test('falls back to the multi_info project name when the image payload has none', async () => {
+    const { client, calls } = makeClient(url => {
+      if (url.pathname === '/api/project/image') {
+        return jsonResponse({
+          code: '00000',
+          result: { name: 'Home', versions: [] }
+        });
+      }
+      if (url.pathname === '/api/project/multi_info') {
+        return jsonResponse({
+          code: '00000',
+          result: { name: '赣云充', images: [] }
+        });
+      }
+      return undefined;
+    });
+
+    await expect(client.getDesignMeta(REQUEST)).resolves.toMatchObject({
+      name: 'Home',
+      projectName: '赣云充'
+    });
+    expect(calls).toHaveLength(2);
+    expect(calls[1].url).toContain('/api/project/multi_info');
+    expect(calls[1].url).toContain('img_limit=1');
+  });
+
+  test('a failing multi_info fallback degrades to an absent projectName', async () => {
+    const { client } = makeClient(url => {
+      if (url.pathname === '/api/project/image') {
+        return jsonResponse({
+          code: '00000',
+          result: { name: 'Home', versions: [] }
+        });
+      }
+      if (url.pathname === '/api/project/multi_info') {
+        return jsonResponse({ code: '50000', msg: 'boom', result: null }, 500);
+      }
+      return undefined;
+    });
+
+    await expect(client.getDesignMeta(REQUEST)).resolves.toMatchObject({
+      name: 'Home',
+      projectName: undefined
     });
   });
 });

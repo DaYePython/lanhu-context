@@ -140,7 +140,7 @@ bin 名建议注册两个：`lanhu`（日常）与 `lanhu-context`（防冲突�
 | `lanhu preview <url>` | 预览图 | `-o <file>` 落盘 + stdout 报告；`-o -` 直出 PNG 二进制 |
 | `lanhu context <url>` | 复合命令 = 上游 `export`：一次产出 context.md + preview.png | 文件清单 JSON（`--inline` 时为 context 正文） |
 | `lanhu auth <set\|status\|test>` | 凭据管理与活性检测 | 状态 JSON（永不含 token 明文） |
-| `lanhu doctor` | 环境自检（node 版本/网络/token/cwd 可写） | 检查报告 |
+| `lanhu doctor` | 环境自检（node 版本/网络/token/cwd 可写/输出目录） | 检查报告 |
 | `lanhu-context-mcp [--stdio\|--http]`（@lanhu-context/mcp 自带 bin，CLI 不含此功能） | 启动 MCP 兼容 server | （协议流） |
 
 原子命令（parse→preview）对应管道各阶段，`context` 是官方组合的快捷复合命令——既满足"一步出结果"，又不牺牲可组合性。
@@ -152,34 +152,38 @@ bin 名建议注册两个：`lanhu`（日常）与 `lanhu-context`（防冲突�
 --dds-token <string>    DDS_TOKEN，缺省复用 --token
 --timeout <ms>          HTTP 超时，默认 30000
 --retries <n>           仅对 retryable 错误重试的次数，默认 2（指数退避，见 §6.3）
---env-file <path>       env 文件，默认 cwd/.env.local（保留 --env-path 别名兼容 Node 20/22）
+--env-file <path>       env 文件，默认 cwd/.env.local（保留上游 --env-path 别名）
 --cwd <path>            工作目录锚点（先于 env 加载与相对路径解析）
 --json                  结构化 envelope 输出（报告类命令无 TTY 时自动开启；产物流命令见 §5 通道规则）
---format <fmt>          按命令支持 json|md|html|css|table
 -o, --output <path|->   写文件或 stdout（显式 -o 声明的产物通道不受自动 --json 影响，见 §5）
---force                 跳过内容比对，强制重写全部产物文件（默认：内容一致跳过、不一致覆盖）
 -q, --quiet             stderr 只留 error
 --verbose               stderr 输出 debug（含各阶段耗时）
 --no-color              禁用颜色（NO_COLOR env 亦生效）
 --strict                warning 升级为 fatal（CI 用）
---dry-run               只报告将执行的动作、不写盘（支持：context、assets --download、preview -o <file>）
---lang <en-US|zh-CN>    指引文本语言（上游 --prompt-lang 更名，保留别名）
+--lang <en-US|zh-CN>    指引文本语言，默认 en-US（上游 --prompt-lang 更名，保留别名）
 --version               输出版本；与 --json 组合输出 {name, version, node}
 ```
+
+别名解析均为双横线形式（`--env-path`、`--prompt-lang`、`--tailwindcss`）；citty 的 `--help` 把别名渲染成单横线（如 `-env-path`）只是展示格式。`--format`、`--force`、`--dry-run` 是命令级 flag（见下表），不是全局 flag。
 
 命令级 flags：
 
 | 命令 | flag | 说明 |
 | --- | --- | --- |
 | `html` / `context` | `--tailwind` | CSS→Tailwind 转换（上游 `--tailwindcss` 简化，保留别名） |
-| `html` / `context` | `--tw-version <3\|4>` | Tailwind 引擎版本 |
+| `html` / `context` | `--tw-version <3\|4>` | Tailwind 引擎版本，默认 3 |
 | `html` / `context` | `--unit-scale <n>` | 全局尺寸倍率 |
 | `html` / `context` | `--skip-slices` | 跳过切图定位与映射 |
-| `html` / `context` | `--assets-dir <path>` | 映射中的本地图片路径前缀 |
+| `html` / `context` / `assets` | `--assets-dir <path>` | 映射中的本地图片路径前缀 |
+| `tokens` | `--format <json\|css>` | 输出格式，默认 json；css 输出 `:root {}` CSS 变量 |
 | `context` | `--inline` | stdout 直接输出 context 正文（与 `--json` 互斥，见 §5） |
 | `context` | `--out-dir <path>` | 落盘目录，默认 `<cwd>/.lanhu.local` |
+| `context` / `assets` / `preview` | `--force` | 跳过内容比对，强制重写全部产物文件（默认：内容一致跳过、不一致覆盖） |
 | `assets` | `--download` | 实际下载切图（默认只输出映射） |
 | `assets` | `--concurrency <n>` | 并发下载数，默认 4 |
+| `assets` | `--dry-run` | 配合 `--download`：只报告将下载哪些文件、不写盘 |
+| `assets` | `-o, --output <dir>` | 下载保存目录；同时作为映射的本地路径前缀，优先于 `--assets-dir` |
+| `doctor` | `--out-dir <path>` | 要检查的输出目录（缺省检查默认的 `<cwd>/.lanhu.local`） |
 | `auth set` | `--token-stdin` | 从 stdin 读 token，避免进 argv/shell 历史 |
 | `mcp` | `--stdio` / `--http` / `--host` / `--port` / `--mode` / `--compat-strict` | 见 §9 |
 
@@ -322,7 +326,7 @@ lanhu context "$URL" --inline | claude -p "按 context 实现这个页面"
 
 - `lanhu auth set`：交互（TTY）或 `--token-stdin`（自动化，避免进 argv）写入用户级配置（文件权限 0600）；项目内仍推荐 `.env.local` 以隔离多项目 token。
 - `lanhu auth status`：显示 token 来源（flag/env/文件路径）+ 掩码指纹 + 是否配置 DDS_TOKEN。
-- `lanhu auth test`：调一次轻量主站 API 验证活性，输出 `{ok, expiresHint}`——CI 与 skills 排障的第一步。
+- `lanhu auth test <url>`：调一次轻量主站 API 验证 token 活性——CI 与 skills 排障的第一步。需要一个设计稿 URL 定位接口参数（位置参数，缺省回退 `LANHU_TEST_URL` 环境变量），输出 `{ok, checkedAt, tokenSource, design, hint}`。
 - `lanhu.config.ts` 承载项目级默认：`tailwind/twVersion/unitScale/outDir/assetsDir/lang`，让重复 flag 收敛进仓库。
 
 ---
