@@ -7,6 +7,7 @@ import { defineCommand } from 'citty';
 import { globalArgs } from '../args';
 import { maskSecret } from '../config/index';
 import { writeUserConfig } from '../config/user-config';
+import { receiveToken } from '../io/bridge-server';
 import { promptHidden } from '../io/prompt';
 import { readStdin } from '../io/stdin';
 import { createClient, requireUrlArg, toDesignRequest } from '../lib';
@@ -345,11 +346,108 @@ const authTestCommand = defineCommand({
     })
 });
 
+// Must match DEFAULT_BRIDGE_PORT in the browser extension.
+const DEFAULT_BRIDGE_PORT = 7623;
+
+const authListenCommand = defineCommand({
+  meta: {
+    name: 'listen',
+    description: [
+      '在 127.0.0.1 上一次性接收浏览器扩展发来的 Cookie 并写入用户级配置（0600）。',
+      '只接受来源为 chrome-extension:// 的请求；收到一次或超时后退出。',
+      '',
+      '示例:',
+      '  lanhu auth listen',
+      '  lanhu auth listen --port 7624 --timeout 300'
+    ].join('\n')
+  },
+  args: {
+    // globalArgs first: listen redefines `timeout` (seconds to wait for the
+    // extension) and must win over the global HTTP `--timeout` (ms).
+    ...globalArgs,
+    port: {
+      type: 'string',
+      description: `监听端口（默认 ${DEFAULT_BRIDGE_PORT}，需与扩展常量一致）`,
+      default: String(DEFAULT_BRIDGE_PORT)
+    },
+    timeout: {
+      type: 'string',
+      valueHint: 's',
+      description: '等待超时秒数（默认 120）',
+      default: '120'
+    }
+  },
+  run: ({ args, rawArgs }) =>
+    executeCommand({
+      command: 'auth listen',
+      kind: 'report',
+      args,
+      rawArgs,
+      preValidate: parsed => {
+        const port = Number(parsed.port);
+        if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+          throw new LanhuError(
+            'USAGE_ERROR',
+            `--port 必须是 1-65535 的整数，收到 ${parsed.port}`
+          );
+        }
+        const timeout = Number(parsed.timeout);
+        if (!Number.isFinite(timeout) || timeout <= 0) {
+          throw new LanhuError(
+            'USAGE_ERROR',
+            `--timeout 必须是正数秒，收到 ${parsed.timeout}`
+          );
+        }
+      },
+      handler: async ctx => {
+        const port = Number(args.port);
+        const timeoutMs = Number(args.timeout) * 1000;
+
+        // Progress goes to stderr; stdout carries only the result envelope.
+        process.stderr.write(
+          [
+            `listening  http://127.0.0.1:${port}/token（仅接受 chrome-extension:// 来源）`,
+            `           在蓝湖设计稿页面右键点击「发送 cookies 到本机」，${args.timeout}s 内有效`,
+            ''
+          ].join('\n')
+        );
+
+        const payload = await receiveToken({ port, timeoutMs });
+
+        const path = ctx.config.userConfigPath;
+        writeUserConfig(path, {
+          lanhuToken: payload.lanhuToken,
+          ...(payload.ddsToken ? { ddsToken: payload.ddsToken } : {})
+        });
+
+        const updated = ['LANHU_TOKEN'];
+        if (payload.ddsToken) updated.push('DDS_TOKEN');
+
+        const data = {
+          path,
+          mode: '0600',
+          updated,
+          fingerprint: maskSecret(payload.lanhuToken)
+        };
+        return {
+          data,
+          render: () =>
+            [
+              `received ${updated.join(', ')} from browser extension`,
+              `saved    ${updated.join(', ')} -> ${path} (mode 0600)`,
+              `token    ${data.fingerprint}`
+            ].join('\n'),
+          summary: ['运行 `lanhu auth test <url>` 验证 token 活性']
+        };
+      }
+    })
+});
+
 export const authCommand = defineCommand({
   meta: {
     name: 'auth',
     description: [
-      '凭据管理：set（写入用户级配置，0600）/ status（来源 + 掩码指纹）/ test（活性检测）',
+      '凭据管理：set（写入用户级配置，0600）/ status（来源 + 掩码指纹）/ test（活性检测）/ listen（接收扩展发来的 Cookie）',
       '',
       '示例:',
       '  lanhu auth set',
@@ -360,6 +458,7 @@ export const authCommand = defineCommand({
   subCommands: {
     set: authSetCommand,
     status: authStatusCommand,
-    test: authTestCommand
+    test: authTestCommand,
+    listen: authListenCommand
   }
 });
