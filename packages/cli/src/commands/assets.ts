@@ -23,7 +23,7 @@ export const assetsCommand = defineCommand({
       '',
       '示例:',
       '  lanhu assets "$URL"',
-      '  lanhu assets "$URL" --download -o src/assets/lanhu --concurrency 4',
+      '  lanhu assets "$URL" --download -o src/assets/home-dashboard --concurrency 4',
       '  lanhu assets "$URL" --download --dry-run --json | jq .data.items',
       '  lanhu assets "$URL" --assets-dir ./assets/lanhu --json | jq .data.mapping'
     ].join('\n')
@@ -50,7 +50,7 @@ export const assetsCommand = defineCommand({
       alias: 'o',
       valueHint: 'dir',
       description:
-        '下载保存目录（同时作为映射的本地路径前缀；优先于 --assets-dir）'
+        '下载保存目录——切图的最终交付目录，建议放进项目源码（如 src/assets/<语义化页面名>）；同时作为映射的本地路径前缀，优先于 --assets-dir'
     },
     'assets-dir': {
       type: 'string',

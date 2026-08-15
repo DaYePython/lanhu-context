@@ -116,7 +116,8 @@ export const contextCommand = defineCommand({
     'out-dir': {
       type: 'string',
       valueHint: 'path',
-      description: '落盘目录（默认 <cwd>/.lanhu.local）'
+      description:
+        '中间产物目录：存 context.md 与 preview.png（默认 <cwd>/.lanhu.local）。要交付的切图不放这里，用 lanhu assets --download -o 下载到项目目录'
     },
     force: {
       type: 'boolean',

@@ -29,7 +29,7 @@ transport:
 
 工具行为:
   --mode <inline|files>   默认输出模式：inline 直出正文 | files 落盘后返回 resource_link（默认 inline）
-  --out-dir <path>        files 模式落盘目录（默认 <cwd>/.lanhu.local）
+  --out-dir <path>        files 模式的中间产物目录：存 context.md 与 preview.png（默认 <cwd>/.lanhu.local）
   --compat-strict         恢复上游行为：tokens/preview 等附属内容失败时整体返回 isError
   --lang <en-US|zh-CN>    返回文本语言（默认 en-US）
   --tailwind              HTML 输出转 Tailwind
