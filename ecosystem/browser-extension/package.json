@@ -1,0 +1,19 @@
+{
+  "name": "@lanhu-context/browser-extension",
+  "version": "0.0.0",
+  "private": true,
+  "description": "蓝湖设计稿详情页浏览器扩展：复制设计稿链接、复制 Cookie、发送 Cookie 到本机",
+  "type": "module",
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@lanhu-context/core": "workspace:*",
+    "@types/chrome": "^0.0.287",
+    "jsdom": "^25.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^7.0.0"
+  }
+}
