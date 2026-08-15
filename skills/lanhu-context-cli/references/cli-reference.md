@@ -59,7 +59,7 @@
 | `assets` | `--dry-run` | `false` | 配合 `--download`：只列出将下载哪些文件，不实际写盘 |
 | `assets` | `-o, --output <dir>` | — | 下载保存目录（最终交付目录，推荐 `src/assets/<语义化页面名>`），同时作为映射本地路径前缀（优先于 `--assets-dir`） |
 | `preview` | `-o, --output <file\|->` | — | PNG 输出位置：文件路径（重复执行安全，内容相同自动跳过）或 `-` 直接输出二进制到 stdout |
-| `auth set` | `--token-stdin` / `--dds-token-stdin` | `false` | 非 TTY 必须用：从 stdin 读 token（两者同传时第 1 行 LANHU_TOKEN、第 2 行 DDS_TOKEN） |
+| `auth set` | `--token-stdin` / `--dds-token-stdin` | `false` | 非 TTY 必须用：从 stdin 读 token（两者同传时第 1 行 LANHU_TOKEN、第 2 行 DDS_TOKEN）；TTY 无管道时回落为交互隐藏输入，只提示对应 token |
 | `doctor` | `--out-dir <path>` | `<cwd>/.lanhu.local` | 要检查的输出目录（与 `context --out-dir` 同义），检查其可写或可创建 |
 
 `auth test [url]`：位置参数缺省时回退 `LANHU_TEST_URL` 环境变量；输出 `data: {ok, checkedAt, tokenSource, design:{name, imageId}, hint}`。

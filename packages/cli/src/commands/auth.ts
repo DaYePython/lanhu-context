@@ -12,13 +12,87 @@ import { readStdin } from '../io/stdin';
 import { createClient, requireUrlArg, toDesignRequest } from '../lib';
 import { executeCommand } from '../runner';
 
+const TOKEN_GUIDE_URL = 'https://lanhu.refineup.com/guide/get-lanhu-token';
+
+// Users paste the Cookie value from DevTools; common paste artifacts
+// (a leading `Cookie:` label, surrounding quotes) are stripped so the
+// stored token is exactly the header value.
+export function normalizeCookieToken(raw: string): string {
+  let token = raw.trim();
+  token = token.replace(/^cookie\s*:\s*/i, '');
+  if (
+    token.length >= 2 &&
+    ((token.startsWith('"') && token.endsWith('"')) ||
+      (token.startsWith("'") && token.endsWith("'")))
+  ) {
+    token = token.slice(1, -1).trim();
+  }
+  return token;
+}
+
+// A browser Cookie header is `k=v; k2=v2; …` — no `=` means the paste is
+// almost certainly not the Cookie value (e.g. a URL or a header name).
+function looksLikeCookie(token: string): boolean {
+  return token.includes('=');
+}
+
+function printInteractiveGuide(existing: {
+  configured: boolean;
+  source?: string;
+  fingerprint?: string;
+}): void {
+  const lines = [
+    '获取 LANHU_TOKEN（整段浏览器 Cookie）：',
+    '  1. 打开 https://lanhuapp.com 并确认已登录',
+    '  2. 打开开发者工具 → Network（网络）→ 刷新页面',
+    '  3. 过滤 Fetch/XHR，点任意一个 lanhuapp.com 的请求',
+    '  4. 在 Request Headers 里找到 Cookie，只复制 Cookie 后面的整段内容',
+    `  图文教程：${TOKEN_GUIDE_URL}`,
+    ''
+  ];
+  if (existing.configured) {
+    lines.push(
+      `当前已配置 LANHU_TOKEN（${existing.source}  ${existing.fingerprint}），继续将覆盖用户级配置。`,
+      ''
+    );
+  }
+  process.stderr.write(`${lines.join('\n')}`);
+}
+
+async function promptCookieToken(name: string): Promise<string> {
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const token = normalizeCookieToken(
+      await promptHidden(`${name}（粘贴后按回车确认，输入不会显示在终端）: `)
+    );
+    if (token && looksLikeCookie(token)) {
+      process.stderr.write(`已读取  ${maskSecret(token)}\n`);
+      return token;
+    }
+    if (attempt < MAX_ATTEMPTS) {
+      process.stderr.write(
+        token
+          ? '输入不含 "="，看起来不是 Cookie 内容（应形如 k=v; k2=v2; …），请重新粘贴。\n'
+          : '未读到内容（粘贴可能失败），请重新粘贴。\n'
+      );
+    }
+  }
+  throw new LanhuError(
+    'USAGE_ERROR',
+    `连续 3 次未读到有效的 ${name}（应为整段浏览器 Cookie，形如 k=v; k2=v2; …）`,
+    { hint: `获取方法见 ${TOKEN_GUIDE_URL}` }
+  );
+}
+
 const authSetCommand = defineCommand({
   meta: {
     name: 'set',
     description: [
       '写入用户级凭据配置（文件权限 0600）。TTY 下交互输入（隐藏回显）；',
       '非 TTY（CI/脚本）必须用 --token-stdin 从 stdin 读，避免 token 进 argv/shell 历史。',
-      '同时传 --token-stdin 与 --dds-token-stdin 时，stdin 第 1 行为 LANHU_TOKEN、第 2 行为 DDS_TOKEN。',
+      '同时传 --token-stdin 与 --dds-token-stdin 时，stdin 第 1 行为 LANHU_TOKEN、第 2 行为 DDS_TOKEN；',
+      'TTY 下（无管道）传 --*-stdin 时回落为交互隐藏输入，只提示对应 token。',
+      '获取 token 教程：https://lanhu.refineup.com/guide/get-lanhu-token',
       '',
       '示例:',
       '  lanhu auth set',
@@ -53,10 +127,10 @@ const authSetCommand = defineCommand({
         let lanhuToken: string | undefined;
         let ddsToken: string | undefined;
 
-        if (tokenFromStdin || ddsFromStdin) {
+        if ((tokenFromStdin || ddsFromStdin) && !interactive) {
           const lines = (await readStdin())
             .split('\n')
-            .map(line => line.trim())
+            .map(line => normalizeCookieToken(line))
             .filter(line => line.length > 0);
           let cursor = 0;
           if (tokenFromStdin) lanhuToken = lines[cursor++];
@@ -73,17 +147,41 @@ const authSetCommand = defineCommand({
               `stdin did not provide the DDS_TOKEN line (expected line ${tokenFromStdin ? 2 : 1})`
             );
           }
-        } else if (interactive) {
-          lanhuToken = await promptHidden(
-            'LANHU_TOKEN（登录 lanhuapp.com 的整段浏览器 Cookie，输入隐藏回显）: '
-          );
-          if (!lanhuToken) {
-            throw new LanhuError('USAGE_ERROR', 'LANHU_TOKEN 不能为空');
+        } else if (tokenFromStdin || ddsFromStdin) {
+          // *-stdin flags in a TTY (no pipe): reading raw stdin would hang
+          // silently, so fall back to hidden prompts for the requested tokens.
+          if (tokenFromStdin) {
+            printInteractiveGuide({
+              configured: ctx.config.token !== undefined,
+              source: ctx.config.tokenSource,
+              fingerprint: ctx.config.token
+                ? maskSecret(ctx.config.token)
+                : undefined
+            });
+            lanhuToken = await promptCookieToken('LANHU_TOKEN');
           }
-          ddsToken = await promptHidden(
-            'DDS_TOKEN（可选，直接回车跳过 = 复用 LANHU_TOKEN）: '
+          if (ddsFromStdin) {
+            ddsToken = await promptCookieToken('DDS_TOKEN');
+          }
+        } else if (interactive) {
+          printInteractiveGuide({
+            configured: ctx.config.token !== undefined,
+            source: ctx.config.tokenSource,
+            fingerprint: ctx.config.token
+              ? maskSecret(ctx.config.token)
+              : undefined
+          });
+          lanhuToken = await promptCookieToken('LANHU_TOKEN');
+          ddsToken = normalizeCookieToken(
+            await promptHidden(
+              'DDS_TOKEN（可选，直接回车跳过 = 复用 LANHU_TOKEN；输入不会显示在终端）: '
+            )
           );
-          if (!ddsToken) ddsToken = undefined;
+          if (ddsToken) {
+            process.stderr.write(`已读取  ${maskSecret(ddsToken)}\n`);
+          } else {
+            ddsToken = undefined;
+          }
         } else {
           throw new LanhuError(
             'USAGE_ERROR',

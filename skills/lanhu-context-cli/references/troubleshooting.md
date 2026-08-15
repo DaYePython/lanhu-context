@@ -38,7 +38,7 @@ $ lanhu meta "$URL" --json
 - 原因：整条配置链（flag → env → env 文件 → 项目 config → 用户 config）都没有 token；或 `--cwd`/显式 `--env-file` 路径不存在（`CONFIG_INVALID`）。
 - 动作：
   1. `lanhu auth status --json` 看链路上到底读到了什么（`data.token.source` / `envFilePath` / `userConfigExists`）。
-  2. 引导用户配置：交互 `lanhu auth set`；CI/脚本 `printf "%s\n" "$LANHU_TOKEN" | lanhu auth set --token-stdin`；或写 `<cwd>/.env.local`。
+  2. 引导用户配置：交互 `lanhu auth set`（会打印获取 Cookie 的分步引导，图文教程：https://lanhu.refineup.com/guide/get-lanhu-token ）；CI/脚本 `printf "%s\n" "$LANHU_TOKEN" | lanhu auth set --token-stdin`；或写 `<cwd>/.env.local`。
   3. 注意 env 文件默认取 `<cwd>/.env.local`——从别的目录运行时加 `--cwd <项目根>` 或 `--env-file <path>`。
 
 ## exit 4 — 认证/权限/空结果（`AUTH_EXPIRED` / `ACCESS_DENIED` / `EMPTY_RESULT` / `DESIGN_NOT_FOUND` / `TRANSCODE_NOT_ENABLED`）
@@ -51,7 +51,7 @@ $ lanhu meta "$URL" --token "<invalid>" --json
 # exit 4
 ```
 
-- `AUTH_EXPIRED`：token 是浏览器 Cookie，随登录态过期。动作：引导用户重新登录蓝湖 → 复制整段 Cookie → `lanhu auth set` → `lanhu auth test "$URL" --json` 确认 `data.ok: true`。
+- `AUTH_EXPIRED`：token 是浏览器 Cookie，随登录态过期。动作：引导用户重新登录蓝湖 → 复制整段 Cookie（图文教程：https://lanhu.refineup.com/guide/get-lanhu-token ）→ `lanhu auth set` → `lanhu auth test "$URL" --json` 确认 `data.ok: true`。
 - `ACCESS_DENIED`：当前账号无该团队/项目/设计稿权限。动作：换账号或找管理员开权限，不要重试。
 - `DESIGN_NOT_FOUND`：image_id 在该项目下不存在。动作：核对 URL 指向的设计稿仍存在且账号可见。
 - `EMPTY_RESULT`（**HTTP 200 + null payload 多义性**）：蓝湖对"URL 不完整 / 无权限 / token 失效"等情况都可能返回 200 + 空 result，无法从响应区分。**排查顺序固定（token → URL → 转码开关）**：
