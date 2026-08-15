@@ -51,13 +51,13 @@
 | `html` / `context` | `--skip-slices` | `false` | 不处理切图：跳过切图定位与下载清单，图片保持蓝湖远程 URL（只看布局时更快） |
 | `html` / `context` / `assets` | `--assets-dir <path>` | `./src/assets/<设计稿名>` | 生成代码里图片引用的本地路径前缀 |
 | `context` | `--inline` | `false` | 不写文件，把 context 正文直接输出到 stdout（与 `--json` 互斥） |
-| `context` | `--out-dir <path>` | `<cwd>/.lanhu.local` | 落盘目录 |
+| `context` | `--out-dir <path>` | `<cwd>/.lanhu.local` | 中间产物落盘目录（context.md、preview.png；不放要交付的静态资源） |
 | `context` / `assets` / `preview` | `--force` | `false` | 不比对已有文件内容，强制重写全部输出文件（默认内容相同的文件自动跳过） |
 | `tokens` | `--format <json\|css>` | `json` | 输出格式 |
 | `assets` | `--download` | `false` | 实际下载切图到本地（默认只列出映射、不下载） |
 | `assets` | `--concurrency <n>` | `4` | 并发下载数 |
 | `assets` | `--dry-run` | `false` | 配合 `--download`：只列出将下载哪些文件，不实际写盘 |
-| `assets` | `-o, --output <dir>` | — | 下载保存目录，同时作为映射本地路径前缀（优先于 `--assets-dir`） |
+| `assets` | `-o, --output <dir>` | — | 下载保存目录（最终交付目录，推荐 `src/assets/<语义化页面名>`），同时作为映射本地路径前缀（优先于 `--assets-dir`） |
 | `preview` | `-o, --output <file\|->` | — | PNG 输出位置：文件路径（重复执行安全，内容相同自动跳过）或 `-` 直接输出二进制到 stdout |
 | `auth set` | `--token-stdin` / `--dds-token-stdin` | `false` | 非 TTY 必须用：从 stdin 读 token（两者同传时第 1 行 LANHU_TOKEN、第 2 行 DDS_TOKEN） |
 | `doctor` | `--out-dir <path>` | `<cwd>/.lanhu.local` | 要检查的输出目录（与 `context --out-dir` 同义），检查其可写或可创建 |

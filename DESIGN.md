@@ -355,7 +355,7 @@ lanhu context "$URL" --inline | claude -p "按 context 实现这个页面"
 
 | 场景 | Agent 调度序列 |
 | --- | --- |
-| 从设计稿实现页面（默认） | `lanhu auth test` → 读项目判断 Tailwind → `lanhu context <url> --json`（按项目加 `--tailwind --tw-version N`）→ 读 context.md → `lanhu assets <url> --download -o <项目资产目录>` → 写业务代码 |
+| 从设计稿实现页面（默认） | `lanhu auth test` → 读项目判断 Tailwind → `lanhu context <url> --json`（按项目加 `--tailwind --tw-version N`）→ 读 context.md → `lanhu assets <url> --download -o <最终交付目录>`（推荐 `src/assets/<语义化页面名>`）→ 写业务代码 → 交付前检查（代码引用的静态资源逐一存在、可访问） |
 | 只分析布局结构 | `lanhu html <url> --skip-slices`（stdout 直接进上下文，不落盘） |
 | 建立/核对设计系统 | `lanhu tokens <url> --format css` 与项目现有变量 diff |
 | 排障 | 按退出码分派：2→检查 URL 参数完整性；3/4→`lanhu auth test` + 重取 Cookie；5→`--retries`/`--timeout`；其余→`lanhu doctor` |
@@ -366,6 +366,7 @@ SKILL.md 行为约束（沿用上游技能的纪律并适配新 CLI）：
 2. 不回显 token；凭据问题只引导用户运行 `lanhu auth set`。
 3. 尊重严重性分级：degraded 不视为失败，但要在答复中如实告知用户哪些附属产物缺失。
 4. 优先原子命令按需取数据，避免每次都跑完整 `context`（省时间与上下文窗口）。
+5. 静态资源交付纪律：`.lanhu.local` 只放中间产物（context/preview/schema/缓存）；切图交付到项目最终目录（Agent 决定，推荐 `src/assets/<语义化页面名>`）；图片/字体默认相对路径引用、禁自动 Base64（用户明确要求"单文件、离线独立、内嵌资源"除外）；字体只认文件不认名字（无文件用系统 fallback 并说明，替代字体必须标注）；不得隐式引入打包脚本；交付前逐一核对代码引用的静态资源存在且可访问。
 
 references/ 保留：`cli-reference.md`（参数表）、`pipeline.md`（管道配方）、`troubleshooting.md`（按退出码组织）。MCP 场景（transport 客户端配置、`--mode`/`--compat-strict` 语义、自上游包迁移对照、MCP 排障）独立成 `skills/lanhu-context-mcp` 技能，CLI 技能中只留指路句。
 

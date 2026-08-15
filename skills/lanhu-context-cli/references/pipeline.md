@@ -43,10 +43,10 @@ lanhu tokens "$URL" --format css > src/styles/design-tokens.css
 
 ## 4. `assets --download` 重复执行安全的下载
 
-何时用：把切图落到项目资产目录；可反复执行（已存在且内容相同的文件自动跳过，等价增量/续传）。
+何时用：把切图落到**最终交付目录**（不是 `.lanhu.local`——那里只放 context/preview/schema 等中间产物）。交付目录由你按项目结构决定，推荐 `src/assets/<语义化页面名>`；可反复执行（已存在且内容相同的文件自动跳过，等价增量/续传）。
 
 ```bash
-lanhu assets "$URL" --download -o src/assets/lanhu --concurrency 4 --json
+lanhu assets "$URL" --download -o src/assets/<语义化页面名> --concurrency 4 --json
 ```
 
 实测 `data.summary`：首跑 `{"total":45,"written":45,"skipped":0,"overwritten":0,"failed":0}`；紧接着重跑 `{"total":45,"written":0,"skipped":45,"overwritten":0,"failed":0}`（内容一致全部 skipped），两次均 exit 0。先看清单不写盘：`--download --dry-run --json | jq .data.items`（实测每条 `"status":"planned"`，无 summary，exit 0）。

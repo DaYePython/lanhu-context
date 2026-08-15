@@ -20,7 +20,10 @@ npx -y -p @lanhu-context/cli lanhu --help
 3. **附属内容缺失不算失败。** 退出码 0 + `warnings[]`（如 `TOKENS_UNAVAILABLE`、`PREVIEW_UNAVAILABLE`）表示核心结果可用、只是附属内容缺失（缺失项都列在 warnings 中）——继续干活，但必须在答复中如实告知用户缺了什么，不要虚构缺失的数据。
 4. **重复执行安全，放心重跑。** `context` / `assets --download` / `preview -o` 会比对已有文件内容：已存在且内容相同自动跳过（skipped）、内容变了才覆盖（overwritten）、新文件写入（written）；`--force` 跳过比对强制重写。
 5. **优先原子命令按需取数据。** 只要 ID 用 `parse`，只要布局用 `html --skip-slices`，只要 tokens 用 `tokens`——别每次都跑完整 `context`（省时间与上下文窗口）。
-6. **产物落盘用 `.local` 目录**（默认 `--out-dir` 为 `<cwd>/.lanhu.local`），避免产物进 git。
+6. **`.local` 目录只放中间产物。** 默认 `--out-dir`（`<cwd>/.lanhu.local`）存 context.md、preview.png、schema、缓存资源这类中间产物（`.local` 后缀确保不进 git）。切图等要交付的静态资源**不放这里**——用 `assets --download -o` 直接落到项目的最终交付目录：目录由你根据项目结构决定，推荐 `src/assets/<语义化页面名>`。
+7. **图片与字体默认相对路径引用，禁止自动 Base64。** 生成的代码用相对路径引用图片/字体文件，不得擅自转成 `data:image/...` 或 `data:font/...` 内嵌；只有用户明确要求"单文件、离线独立、内嵌资源"时才允许 Base64。
+8. **字体只认文件，不认名字。** CSS 里出现字体名 ≠ 已拿到字体文件。设计稿提供了字体文件 → 下载并在答复中报告；只有字体名称 → 用系统字体 fallback，并说明未获得原字体文件；确需自动下载替代字体 → 必须在答复与代码注释中标注这是替代字体。
+9. **禁止隐式打包脚本。** 交付物就是源码与静态资源文件本体；不得为了内嵌、合并资源而擅自引入打包脚本或构建步骤（用户明确要求打包时除外）。
 
 两条硬性用法约束（违反直接 exit 2 / `USAGE_ERROR`）：`context --inline` 与 `--json` 互斥；`preview --json` 必须配 `-o <file>`（`-o -` 时 stdout 是 PNG 二进制本体）。
 
@@ -50,15 +53,24 @@ exit 0 时 stdout envelope（真实输出，路径缩略）：
 
 ```bash
 # 4. 读 data.files 里的 context.md（结构：HTML+CSS 代码 → 切图映射 45 条 → 实现指引）
+#    context.md/preview.png 是中间产物，留在 .lanhu.local 即可，不随代码交付
 
-# 5. 下载切图到项目资产目录（-o 同时决定映射里的本地路径前缀）
+# 5. 下载切图到最终交付目录（目录按项目结构自行决定，推荐 src/assets/<语义化页面名>；
+#    -o 同时决定映射里的本地路径前缀）
 lanhu assets "$URL" --download -o src/assets/<语义化页面名> --json
 # → "summary":{"total":45,"written":45,"skipped":0,"overwritten":0,"failed":0}
 
-# 6. 按 context.md + 项目技术栈写业务代码（图片路径与 -o 目录对齐；图片命名改语义化）
+# 6. 按 context.md + 项目技术栈写业务代码（图片路径与 -o 目录对齐；图片命名改语义化；
+#    图片/字体一律相对路径引用，字体按边界 8 处理）
+
+# 7. 交付前检查：代码里引用的每个静态资源都必须真实存在、可访问（防裂图）
+rg -o "src/assets/<语义化页面名>/[A-Za-z0-9._/-]+" -r '$0' <你写的代码目录> | sort -u \
+  | while read -r p; do [ -f "$p" ] || echo "MISSING: $p"; done
+# 无 MISSING 即通过；有缺失 → 对照步骤 5 的 summary.failed 补下载或修正引用路径；
+# 能起 dev server 时再开页面确认无 404/裂图
 ```
 
-失败分支：步骤 3/5 非零退出码 → 按场景 4 分派；`warnings[]` 里有 `TOKENS_UNAVAILABLE`/`PREVIEW_UNAVAILABLE` → 继续实现，答复中说明缺失项。
+失败分支：步骤 3/5 非零退出码 → 按场景 4 分派；`warnings[]` 里有 `TOKENS_UNAVAILABLE`/`PREVIEW_UNAVAILABLE` → 继续实现，答复中说明缺失项；步骤 7 有 MISSING → 交付前必须补齐或改引用，不得带着缺失资源交付。
 
 ## 场景 2：只分析布局结构（不落盘）
 
