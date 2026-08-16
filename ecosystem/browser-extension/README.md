@@ -1,4 +1,6 @@
 # @lanhu-context/browser-extension
+<img src="public/icons/icon48.png" width="48" height="48" alt="lanhu-context helper icon">
+
 
 蓝湖浏览器扩展：在设计稿详情页（detailDetach）与项目画布页（stage）蓝湖自绘的右键菜单里注入三个菜单项，把登录态与设计稿定位信息一键喂给 `lanhu-context` CLI。私有包，不发布 npm。
 
