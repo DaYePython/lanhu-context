@@ -150,3 +150,66 @@ content script 运行在 ISOLATED world 时与页面**同源**，可直接读同
 | 原生右键菜单被屏蔽 | 是 | 是 | 一致 |
 | URL 跟随切换 | 假定 `tid` 恒在 | `image_id` 跟随，**`tid` 切换后丢失** | 解析改为 URL + localStorage 两级 fallback，复刻蓝湖 `getTeamId()` |
 | 存储值合法性 | 未预见 | 可能是 `"undefined"` / `""` | 取值统一过滤占位串 |
+
+## 6. stage 页（#/item/project/stage）侦察结论
+
+页面：`https://lanhuapp.com/web/#/item/project/stage?tid=…&pid=…`（2026-08-16 真机实测）。本节是 `src/content/stage-selectors.ts` 的唯一依据。
+
+### 根本事实：canvas 无卡片 DOM，导航树是唯一 DOM 侧信道
+
+stage 页的设计图由 fabric.js 画在 `<canvas id="stage">` 上，`#canvas-wrap` 下只有 `.temp-group` 与 `<canvas>` 两个子节点——**不存在每张图对应的 DOM 节点**；`#contextMenuWrap` 上也没有任何 `data-*` 携带右键目标；右键链路全程不写 URL，目标只活在页面 JS 对象里。ISOLATED world 能摸到的画布选中态镜像只有左侧画板导航树：
+
+| 选择器 / 属性 | 含义 |
+| --- | --- |
+| `#navTreeRoot .l-tree-node[node-id]` | `node-id` = 设计图 `image_id`（实测树上有 5 个此类节点） |
+| `.l-tree-node.is-current` | 画布选中态镜像；画布选中会驱动树节点加此 class |
+| `is-leafstate` | 叶子（设计图）判据，分组行没有 |
+
+### ⚠ 易错点：取 `node-id`，不是 `node-layer`
+
+同一节点上还有 `node-layer` 属性，那是树内 uuid，与 `image_id` 无关。反查一律读 `node-id`。
+
+### 四种场景实测
+
+| 场景 | `hasShareImg` | `.is-current[node-id]` 数量 | 结论 |
+| --- | --- | --- | --- |
+| 右键一张设计图 | `true` | **1** | ✅ 可取，`node-id` = `image_id` |
+| 右键空白画布区 | `false` | — | 被 `p.shareImg` 闸门拦截，反查须返回 null |
+| 右键分组 | —— | —— | **分组没有右键菜单**（左键选中，不弹菜单），画布右键路径上不存在该场景 |
+| 框选多张后右键 | `true` | **>1** | "哪一张"无从判断，被数量判据拦截，反查须返回 null |
+
+### 核心断言：`node-id` = `image_id`
+
+右键一张设计图时 `.is-current[node-id]` 恰好 **1** 个，其 `node-id` 为 `dacd1d67-8920-4b66-841b-83da92efc90d`，与双击进入该设计稿后地址栏的 `image_id` **完全相等**（uuid 形态）。
+
+选中节点的完整 class 字符串：
+
+```
+l-tree-node project-nav-tree-node is-current is-leafstate is-focusable is-showoperaticon
+```
+
+`hasChildNodes: false`（行内不嵌套子树节点）。**`is-leafstate` 可作叶子判据**——区分设计图与分组行全靠它。
+
+### 右键设计图时的完整菜单（12 项）
+
+```
+rename / moveToGroup / addToGroup / notifyMembers / copy / paste /
+shareImg / downloadImg / downloadSlice / downloadCombineImg / setCover / delete
+```
+
+`listCount: 1`，即 `#contextMenuWrap` 下只有一个 `ul.operate-list`。⚠ 但 wrap 下另有 `ul.menu-children`（二级菜单容器，见 §A 抓取的 DOM），注入必须落在 `ul.operate-list`，塞进 `menu-children` 会把菜单项藏进子菜单。
+
+「分享设计图」`p.shareImg` 只在右键目标是**设计图**时出现（右键空白实测为 `false`），因此它是"当前目标是设计图"的纯 DOM 闸门。
+
+### 时序与折叠分组
+
+- **时序无问题**：`#contextMenuWrap` 出现在 DOM（即 MutationObserver 能看到它）时，`.is-current` 已就绪且恰好 1 个——反查不需要等待或轮询。
+- **折叠分组**：右键折叠分组内的设计图，宿主会自动展开其祖先分组，`currentCount === 1` 仍成立——不需要我们自己展开树。
+
+### 导航树「⋯ 更多」按钮复用同一个菜单
+
+导航树节点行上的「⋯ 更多」按钮打开的是**同一个** `#contextMenuWrap`（实测 `isContextMenuWrap: true`）：容器 id、`ul.operate-list`、`li.operate-item > p` 结构、12 项内容全部一致。**按 id 认菜单的 stage 适配器会自动覆盖这条入口，不需要单独写适配器。**
+
+### ⚠ 易错点：分组也有「⋯」入口，靠 `is-leafstate` 排除
+
+分组在画布上不弹右键菜单，但导航树的「⋯」对分组行同样可用——此时 `.is-current` 行的 `node-id` 是**客户端生成的分组 uuid**，不是 `image_id`，拼进链接会指向不存在的设计稿。反查选择器必须带 `is-leafstate` 判据（分组行没有该 class），这不是可选加固。
