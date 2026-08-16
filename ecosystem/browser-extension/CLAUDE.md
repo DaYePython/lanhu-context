@@ -26,7 +26,7 @@ pnpm vitest run ecosystem/browser-extension               # 测试由根 vitest.
 
 ## 硬性约束
 
-- **禁止打开/读取/grep 仓库根的 `lhcdn.lanhuapp.com.local/`**。那是蓝湖前端 bundle 的本地镜像与反混淆产物，仅供历史调研；页面事实一律以 docs/NOTES.md 与真机实测为准，两者冲突时以实测为准并回写 NOTES.md。
+- **仓库根的 `lhcdn.lanhuapp.com.local/`** 是蓝湖前端 bundle 的本地镜像与反混淆产物，可用于调研页面行为（DOM 结构、路由、localStorage 键等）；源码结论与真机实测冲突时以实测为准，并回写 docs/NOTES.md。
 - **`src/content/selectors.ts` 是所有 DOM 代码的唯一依据**，每个选择器都来自真机实测（muse-ui 类名随蓝湖构建变化，不得凭源码推断）。改选择器只改这个文件，业务逻辑不动。
 - **菜单注入的三条实测铁律**（违反会静默坏掉）：① 列表容器是 `.mu-menu-list` 不是 `.mu-menu`；② 菜单项必须复刻 5 层嵌套（`wrapper > div > ripple + item > title-box > title`），扁平近似会渲染成无样式裸文本；③ 注入项必须 `stopPropagation()` 掉 `mouseup`——宿主收到冒泡的 mouseup 会在 `click` 触发前关闭菜单。
 - **菜单每次右键都是新建再销毁**，注入靠 MutationObserver 持续观察（`installMenuInjector`），不能只跑一次。
