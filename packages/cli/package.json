@@ -1,6 +1,6 @@
 {
   "name": "@lanhu-context/cli",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "description": "CLI for turning Lanhu design URLs into AI-ready design context: parse/schema/html/context pipeline commands",
   "license": "MIT",
