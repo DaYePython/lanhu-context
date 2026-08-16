@@ -213,3 +213,10 @@ shareImg / downloadImg / downloadSlice / downloadCombineImg / setCover / delete
 ### ⚠ 易错点：分组也有「⋯」入口，靠 `is-leafstate` 排除
 
 分组在画布上不弹右键菜单，但导航树的「⋯」对分组行同样可用——此时 `.is-current` 行的 `node-id` 是**客户端生成的分组 uuid**，不是 `image_id`，拼进链接会指向不存在的设计稿。反查选择器必须带 `is-leafstate` 判据（分组行没有该 class），这不是可选加固。
+
+### 规范链接形态：为何带 `project_id`、确定不带 `version_id`
+
+`buildDesignUrl` 拼出的链接是 `detailDetach?tid=&pid=&project_id=&image_id=` 四参。
+
+- **带 `project_id`（与 `pid` 同值）**：URL 上的 `project_id` 是详情页 `project.id` 的**唯一初始来源**——只给 `pid` 时它开局为 `undefined`。蓝湖自己从 stage 跳详情页也是继承 stage 页全部 query 再追加 `project_id` + `image_id`，两参并存是宿主的常态；CLI 侧 `parseLanhuUrl` 按 `pid || project_id` 读取，两值相同不产生歧义。
+- **确定不带 `version_id`**：蓝湖查看历史版本时**根本不写 URL**（三个版本组件内 `$route` / `pushState` 出现次数为 0），链接因此**无法编码"当时看的版本"**——任何 detailDetach 链接打开都是最新版，带上 `version_id` 也不会改变这一点。URL 里的 `version_id` 只服务于评论定位，须与 `comment_id` 成对出现，与设计稿定位无关。
