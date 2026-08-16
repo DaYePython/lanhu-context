@@ -1,4 +1,5 @@
 import { ITEM_ATTR, type MenuAdapter, type MenuItemSpec } from './menu';
+import { correctedTop } from './position';
 import {
   STAGE_DIALOG_SELECTOR,
   STAGE_ITEM_CLASS,
@@ -62,6 +63,22 @@ export function insertStageRows(list: Element, specs: MenuItemSpec[]): void {
   }
 
   list.append(...rows);
+  keepMenuInViewport(list.closest(STAGE_DIALOG_SELECTOR));
+}
+
+/**
+ * Applied once, right after injection. Vue re-patches the popover's inline
+ * style whenever a submenu opens, which reverts this — acceptable, since the
+ * submenus belong to host actions we are not part of.
+ */
+function keepMenuInViewport(dialog: Element | null): void {
+  if (!(dialog instanceof HTMLElement)) return;
+  const box = dialog.getBoundingClientRect();
+  // jsdom reports zeros; a zero-height box never overflows, so tests are inert.
+  const top = correctedTop({ top: box.top, height: box.height }, innerHeight);
+  if (top === null) return;
+  dialog.style.top = `${top}px`;
+  dialog.style.bottom = 'unset';
 }
 
 export const stageMenuAdapter: MenuAdapter = {
