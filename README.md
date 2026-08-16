@@ -57,7 +57,15 @@ lanhu auth set          # reads token from stdin, keeps it off the command line
 lanhu auth test "$URL"  # exit 0 = token works
 ```
 
-Prefer one-click credentials? Build the bundled [browser extension](ecosystem/browser-extension) (`pnpm --filter @lanhu-context/browser-extension build`, then load `dist/` via `chrome://extensions` developer mode), run `lanhu auth listen`, and right-click "发送 cookies 到本机" on any Lanhu design page — the receiver only accepts requests originating from the extension (`chrome-extension://` origin), listens on 127.0.0.1 once, and stores the credential with mode 0600. See [ecosystem/browser-extension/README.md](ecosystem/browser-extension/README.md).
+Prefer one-click login? Install the companion [browser extension](ecosystem/browser-extension) (prebuilt zip on the [GitHub Releases](https://github.com/DaYePython/lanhu-context/releases) page, or build from source — see [ecosystem/browser-extension/README.md](ecosystem/browser-extension/README.md)), then start the one-shot receiver — via npx this works even before the CLI is installed:
+
+```bash
+lanhu auth listen
+# no global install? log in via npx:
+npx -y -p @lanhu-context/cli lanhu auth listen
+```
+
+Right-click "发送 cookies 到本机" (send cookies to this machine) on any Lanhu design page before the timeout (120 s by default) — the receiver only accepts requests originating from the extension (`chrome-extension://` origin), listens on 127.0.0.1 once, and stores the credential with mode 0600.
 
 To teach your agent how to drive the CLI, install the bundled lanhu-context-cli skill with [find-skills](https://github.com/vercel-labs/skills) (project-scoped by default; add `-g` for a global install and `-a <agent>` to pick target agents — agents that don't support global installs are skipped with a ✗):
 

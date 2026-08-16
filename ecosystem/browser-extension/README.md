@@ -48,6 +48,8 @@ pnpm --filter @lanhu-context/browser-extension build
 ```bash
 # 终端：启动一次性接收端（默认 127.0.0.1:7623，120s 超时）
 lanhu auth listen
+# 尚未安装 CLI 时，用 npx 免安装登录：
+npx -y -p @lanhu-context/cli lanhu auth listen
 
 # 浏览器：蓝湖设计稿页面 → 右键 → 「发送 cookies 到本机」
 # 终端收到后自动写入用户级配置并退出；随后可验证：

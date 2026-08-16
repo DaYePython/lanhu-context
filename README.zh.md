@@ -57,7 +57,15 @@ lanhu auth set          # 从 stdin 读 token，不落命令行
 lanhu auth test "$URL"  # exit 0 = token 有效
 ```
 
-想一键配置凭据？构建仓库自带的[浏览器扩展](ecosystem/browser-extension)（`pnpm --filter @lanhu-context/browser-extension build` 后在 `chrome://extensions` 开发者模式加载 `dist/`），终端运行 `lanhu auth listen`，然后在蓝湖设计稿页面右键点「发送 cookies 到本机」——接收端只接受扩展来源（`chrome-extension://` Origin）、仅监听 127.0.0.1、收到一次即退出，凭据以 0600 权限写入用户级配置。详见 [ecosystem/browser-extension/README.md](ecosystem/browser-extension/README.md)。
+想一键登录？安装配套的[浏览器扩展](ecosystem/browser-extension)（[GitHub Releases](https://github.com/DaYePython/lanhu-context/releases) 有预构建 zip，也可自行构建，见 [ecosystem/browser-extension/README.md](ecosystem/browser-extension/README.md)），然后启动一次性接收端——未安装 CLI 也能直接用 npx 登录：
+
+```bash
+lanhu auth listen
+# 尚未安装 CLI 时，用 npx 免安装登录：
+npx -y -p @lanhu-context/cli lanhu auth listen
+```
+
+在超时前（默认 120s）于蓝湖设计稿页面右键点「发送 cookies 到本机」——接收端只接受扩展来源（`chrome-extension://` Origin）、仅监听 127.0.0.1、收到一次即退出，凭据以 0600 权限写入用户级配置。
 
 要让 Agent 学会驱动 CLI，用 [find-skills](https://github.com/vercel-labs/skills) 把本仓的 lanhu-context-cli skill 装到你的 Agent（默认项目级，加 `-g` 全局安装；`-a <agent>` 指定目标 agent，部分 agent 不支持全局安装会标 ✗ 跳过）：
 
