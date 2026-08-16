@@ -1,4 +1,4 @@
-import { ITEM_ATTR, type MenuAdapter, type MenuItemSpec } from './menu';
+import { ITEM_ATTR, type MenuAdapter, type MenuItemSpec } from './injector';
 import { correctedTop } from './position';
 import {
   STAGE_DIALOG_SELECTOR,

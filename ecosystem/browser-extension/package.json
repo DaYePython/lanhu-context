@@ -9,11 +9,12 @@
     "pack:crx": "tsx scripts/pack.ts",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@lanhu-context/ecosystem-core": "workspace:*"
+  },
   "devDependencies": {
-    "@lanhu-context/core": "workspace:*",
     "@types/chrome": "^0.0.287",
     "crx3": "^2.0.0",
-    "jsdom": "^25.0.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^7.0.0"

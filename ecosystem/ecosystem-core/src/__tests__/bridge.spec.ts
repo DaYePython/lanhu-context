@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { collectCookieHeader, sendCookieHeader } from '../collect';
+import { collectCookieHeader, sendCookieHeader } from '../bridge';
 
 describe('collectCookieHeader', () => {
   it('queries the lanhuapp.com domain and serializes the result', async () => {
@@ -21,17 +21,11 @@ describe('collectCookieHeader', () => {
 
 describe('sendCookieHeader', () => {
   it('posts json to the local receiver', async () => {
-    const fetchFn = vi
-      .fn()
-      .mockResolvedValue({ ok: true, status: 200 } as Response);
-    const result = await sendCookieHeader(
-      fetchFn as unknown as typeof fetch,
-      7623,
-      'sid=FAKE1'
-    );
+    const fetchFn = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    const result = await sendCookieHeader(fetchFn, 7623, 'sid=FAKE1');
 
     expect(result).toEqual({ ok: true, status: 200 });
-    const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchFn.mock.calls[0]!;
     expect(url).toBe('http://127.0.0.1:7623/token');
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body as string)).toEqual({
@@ -39,25 +33,28 @@ describe('sendCookieHeader', () => {
     });
   });
 
+  it('passes extra headers through for the userscript bridge marker', async () => {
+    const fetchFn = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    await sendCookieHeader(fetchFn, 7623, 'sid=FAKE1', {
+      'x-lanhu-bridge': 'lanhu-monkey'
+    });
+
+    const [, init] = fetchFn.mock.calls[0]!;
+    expect(init.headers).toEqual({
+      'content-type': 'application/json',
+      'x-lanhu-bridge': 'lanhu-monkey'
+    });
+  });
+
   it('reports a non-2xx status as a failure', async () => {
-    const fetchFn = vi
-      .fn()
-      .mockResolvedValue({ ok: false, status: 403 } as Response);
-    const result = await sendCookieHeader(
-      fetchFn as unknown as typeof fetch,
-      7623,
-      'sid=FAKE1'
-    );
+    const fetchFn = vi.fn().mockResolvedValue({ ok: false, status: 403 });
+    const result = await sendCookieHeader(fetchFn, 7623, 'sid=FAKE1');
     expect(result).toEqual({ ok: false, status: 403 });
   });
 
   it('turns a connection refusal into a readable error', async () => {
     const fetchFn = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
-    const result = await sendCookieHeader(
-      fetchFn as unknown as typeof fetch,
-      7623,
-      'sid=FAKE1'
-    );
+    const result = await sendCookieHeader(fetchFn, 7623, 'sid=FAKE1');
     expect(result.ok).toBe(false);
     expect(result.error).toContain('Failed to fetch');
   });

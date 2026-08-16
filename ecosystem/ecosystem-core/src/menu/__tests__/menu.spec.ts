@@ -1,7 +1,5 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { injectInto, installMenuInjector } from '../menu';
-import { buildDetailRow, detailMenuAdapter } from '../menu-detail';
 import {
   BADGE_CLASS,
   ITEM_SELECTOR,
@@ -9,7 +7,9 @@ import {
   TITLE_BOX_CLASS,
   TITLE_CLASS,
   WRAPPER_CLASS
-} from '../selectors';
+} from '../detail-selectors';
+import { injectInto, installMenuInjector } from '../injector';
+import { buildDetailRow, detailMenuAdapter } from '../menu-detail';
 
 const specs = [
   { id: 'copy-design-url', label: '复制选中设计稿链接', onSelect: vi.fn() },

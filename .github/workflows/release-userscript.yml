@@ -1,0 +1,132 @@
+name: Release Userscript
+
+# Builds the lanhu-monkey userscript, attaches dist/lanhu-monkey.user.js to
+# the GitHub release of the current @lanhu-context/lanhu-monkey tag, and syncs
+# the built file back to main at ecosystem/lanhu-monkey/lanhu-monkey.user.js —
+# the stable raw URL GreasyFork watches via the repo's push webhook. Mirrors
+# release-extension.yml, minus the signing step — a userscript ships as plain
+# reviewable source.
+#
+# Invoked as a reusable workflow from release.yml after every changesets run:
+# a tag pushed with GITHUB_TOKEN cannot trigger `on: push: tags` workflows
+# (GitHub recursion guard), so `workflow_call` is the only reliable hook.
+# The same guard keeps the sync commit below from re-triggering release.yml,
+# while outbound webhooks (GreasyFork) still fire for it.
+# workflow_dispatch exists for manual backfill of the current version.
+
+on:
+  workflow_call: {}
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Re-upload the asset even if the release already has a .user.js'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  userscript:
+    name: Build and upload user.js
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          # Full history so the sync commit below can rebase onto a main that
+          # may have moved since this run started.
+          fetch-depth: 0
+
+      # Cheap gate first: the caller invokes this workflow on every push to
+      # main, so bail out fast unless the current userscript version has been
+      # tagged by changesets and its release still lacks a .user.js asset.
+      - name: Decide whether this version needs building
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE: ${{ inputs.force == true }}
+        run: |
+          set -euo pipefail
+          VERSION=$(jq -r .version ecosystem/lanhu-monkey/package.json)
+          TAG="@lanhu-context/lanhu-monkey@${VERSION}"
+          {
+            echo "version=${VERSION}"
+            echo "tag=${TAG}"
+          } >> "$GITHUB_OUTPUT"
+
+          if ! git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null; then
+            echo "tag ${TAG} does not exist; nothing to release"
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          ASSET_COUNT=$(gh release view "${TAG}" --json assets \
+            --jq '[.assets[].name | select(endswith(".user.js"))] | length' 2>/dev/null || echo 0)
+          if [ "${ASSET_COUNT}" != "0" ] && [ "${FORCE}" != "true" ]; then
+            echo "release ${TAG} already has a .user.js asset; skipping"
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "needed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm
+        if: steps.check.outputs.needed == 'true'
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        if: steps.check.outputs.needed == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.check.outputs.needed == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build userscript (with workspace deps)
+        if: steps.check.outputs.needed == 'true'
+        run: pnpm --filter "@lanhu-context/lanhu-monkey..." run build
+
+      - name: Upload asset to the GitHub release
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # changesets/action normally creates the release for the tag; keep a
+          # fallback for runs where it did not (e.g. manual backfill).
+          if ! gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release create "${TAG}" --verify-tag --title "${TAG}" \
+              --notes "变更明细见 [ecosystem/lanhu-monkey/CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/ecosystem/lanhu-monkey/CHANGELOG.md)。"
+          fi
+          gh release upload "${TAG}" \
+            ecosystem/lanhu-monkey/dist/lanhu-monkey.user.js \
+            --clobber
+
+      # GreasyFork syncs from the raw URL of this tracked copy and is notified
+      # by the repo's push webhook (Settings → Webhooks, "Just the push
+      # event"). releases/latest/download/… is not usable here: changesets
+      # tags several packages, so "latest" rarely points at the userscript
+      # release.
+      - name: Sync built userscript back to main for GreasyFork
+        if: steps.check.outputs.needed == 'true'
+        env:
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cp ecosystem/lanhu-monkey/dist/lanhu-monkey.user.js \
+            ecosystem/lanhu-monkey/lanhu-monkey.user.js
+          git add ecosystem/lanhu-monkey/lanhu-monkey.user.js
+          if git diff --cached --quiet; then
+            echo "tracked copy already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(lanhu-monkey): sync built userscript for GreasyFork (${TAG})"
+          git pull --rebase origin main
+          git push origin HEAD:main

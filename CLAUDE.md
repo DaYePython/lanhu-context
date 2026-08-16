@@ -9,6 +9,9 @@ pnpm monorepo（pnpm 10，Node `^20.19.0 || >=22.12.0`）：
 - `packages/core` —— `@lanhu-context/core`：纯逻辑（URL 解析、蓝湖 API client、schema→HTML、tokens、context 管道）。**零 CLI/MCP 依赖**，不得引入 citty/consola 等。
 - `packages/cli` —— `@lanhu-context/cli`：`lanhu` / `lanhu-context` 二进制，citty 命令定义在 `src/commands/`，退出码在 `src/exit.ts`，参数解析在 `src/args.ts`。
 - `packages/mcp` —— `@lanhu-context/mcp`：MCP 兼容层，自带 bin `lanhu-context-mcp`（`src/main.ts`），对外契约必须与上游 `lanhu-context-mcp` 的 `get_design_context` 保持一致。CLI 不依赖本包。
+- `ecosystem/ecosystem-core` —— `@lanhu-context/ecosystem-core`：浏览器注入端（扩展 / 油猴）共享层——菜单注入、设计稿 URL 解析构建、Cookie 序列化、`auth listen` 桥接封装。私有、源码直出（无 build）、**零 chrome.\*/GM_\***；一致性契约见其 CLAUDE.md。
+- `ecosystem/browser-extension` —— Chrome MV3 扩展（私有；changesets 发版，CI 附签名 crx/zip 到 GitHub Release）。
+- `ecosystem/lanhu-monkey` —— 油猴脚本（vite-plugin-monkey；私有；CI 附 `.user.js` 到 GitHub Release）。**功能与扩展保持一致，共享逻辑一律进 ecosystem-core**，平台包只写适配器。
 - `skills/` —— 面向 Agent 的 SKILL.md（发布物的一部分，改 CLI 行为后必须同步更新）。
 
 ## 常用命令

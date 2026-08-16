@@ -57,13 +57,13 @@ lanhu auth status
 lanhu auth test "<设计稿URL>"
 ```
 
-接收端只接受 `Origin` 为 `chrome-extension://` 的请求，普通网页无法伪造该头；叠加仅监听回环地址、收到一次即退出、超时自动退出。
+接收端只接受浏览器扩展来源（`Origin: chrome-extension://`）或油猴脚本标记（`x-lanhu-bridge` 请求头）的请求，普通网页两者都无法伪造（自定义头会触发 CORS preflight 且拿不到许可）；叠加仅监听回环地址、收到一次即退出、超时自动退出。
 
 ## 修改端口
 
 端口在两处必须一致：
 
-- 扩展侧：`src/shared/constants.ts` 的 `DEFAULT_BRIDGE_PORT`（改后重新 build 并在 `chrome://extensions` 点刷新）
+- 扩展侧：`../ecosystem-core/src/constants.ts` 的 `DEFAULT_BRIDGE_PORT`（改后重新 build 并在 `chrome://extensions` 点刷新）
 - CLI 侧：`lanhu auth listen --port <port>`
 
 ## 权限说明

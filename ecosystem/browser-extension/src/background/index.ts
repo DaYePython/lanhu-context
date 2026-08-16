@@ -1,6 +1,9 @@
-import { DEFAULT_BRIDGE_PORT } from '../shared/constants';
+import {
+  collectCookieHeader,
+  DEFAULT_BRIDGE_PORT,
+  sendCookieHeader
+} from '@lanhu-context/ecosystem-core';
 import type { BackgroundMessage, BackgroundReply } from '../shared/protocol';
-import { collectCookieHeader, sendCookieHeader } from './collect';
 
 async function handle(message: BackgroundMessage): Promise<BackgroundReply> {
   try {

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BRIDGE_MARKER_HEADER,
   type BridgePayload,
   isAllowedOrigin,
+  isAllowedRequest,
   parseBridgeBody,
   receiveToken
 } from '../bridge-server';
@@ -49,6 +51,29 @@ describe('isAllowedOrigin', () => {
   });
 });
 
+describe('isAllowedRequest', () => {
+  it('admits an extension origin without the marker header', () => {
+    expect(isAllowedRequest(EXT_ORIGIN, undefined)).toBe(true);
+  });
+
+  it('admits a userscript marker without any origin', () => {
+    // GM_xmlhttpRequest cannot produce an extension Origin; the custom header
+    // is its gate. A page cannot send one without a preflight it never passes.
+    expect(isAllowedRequest(undefined, 'lanhu-monkey')).toBe(true);
+  });
+
+  it('admits the marker even alongside a page origin', () => {
+    // Some userscript engines forward the page Origin on GM requests.
+    expect(isAllowedRequest('https://lanhuapp.com', 'lanhu-monkey')).toBe(true);
+  });
+
+  it('rejects a page origin with a missing or blank marker', () => {
+    expect(isAllowedRequest('https://evil.example', undefined)).toBe(false);
+    expect(isAllowedRequest('https://evil.example', '   ')).toBe(false);
+    expect(isAllowedRequest(undefined, undefined)).toBe(false);
+  });
+});
+
 describe('parseBridgeBody', () => {
   it('accepts a payload carrying lanhuToken', () => {
     expect(parseBridgeBody('{"lanhuToken":"sid=FAKE"}')).toEqual({
@@ -83,6 +108,21 @@ describe('receiveToken', () => {
         JSON.stringify({ lanhuToken: 'sid=FAKE' }),
         EXT_ORIGIN
       );
+      expect(response.status).toBe(200);
+    });
+    expect(received).toEqual({ lanhuToken: 'sid=FAKE' });
+  });
+
+  it('accepts a userscript POST carrying the marker header and no origin', async () => {
+    const received = await withServer(async port => {
+      const response = await fetch(`http://127.0.0.1:${port}/token`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          [BRIDGE_MARKER_HEADER]: 'lanhu-monkey'
+        },
+        body: JSON.stringify({ lanhuToken: 'sid=FAKE' })
+      });
       expect(response.status).toBe(200);
     });
     expect(received).toEqual({ lanhuToken: 'sid=FAKE' });

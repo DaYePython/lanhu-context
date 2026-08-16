@@ -346,15 +346,16 @@ const authTestCommand = defineCommand({
     })
 });
 
-// Must match DEFAULT_BRIDGE_PORT in the browser extension.
+// Must match DEFAULT_BRIDGE_PORT in ecosystem-core (bundled by both the
+// browser extension and the lanhu-monkey userscript).
 const DEFAULT_BRIDGE_PORT = 7623;
 
 const authListenCommand = defineCommand({
   meta: {
     name: 'listen',
     description: [
-      '在 127.0.0.1 上一次性接收浏览器扩展发来的 Cookie 并写入用户级配置（0600）。',
-      '只接受来源为 chrome-extension:// 的请求；收到一次或超时后退出。',
+      '在 127.0.0.1 上一次性接收浏览器扩展 / 油猴脚本发来的 Cookie 并写入用户级配置（0600）。',
+      '只接受浏览器扩展（chrome-extension:// Origin）或油猴脚本（x-lanhu-bridge 头）来源；收到一次或超时后退出。',
       '',
       '示例:',
       '  lanhu auth listen',
@@ -367,7 +368,7 @@ const authListenCommand = defineCommand({
     ...globalArgs,
     port: {
       type: 'string',
-      description: `监听端口（默认 ${DEFAULT_BRIDGE_PORT}，需与扩展常量一致）`,
+      description: `监听端口（默认 ${DEFAULT_BRIDGE_PORT}，需与扩展 / 油猴共享常量一致）`,
       default: String(DEFAULT_BRIDGE_PORT)
     },
     timeout: {
@@ -406,7 +407,7 @@ const authListenCommand = defineCommand({
         // Progress goes to stderr; stdout carries only the result envelope.
         process.stderr.write(
           [
-            `listening  http://127.0.0.1:${port}/token（仅接受 chrome-extension:// 来源）`,
+            `listening  http://127.0.0.1:${port}/token（仅接受浏览器扩展 / 油猴脚本来源）`,
             `           在蓝湖设计稿页面右键点击「发送 cookies 到本机」，${args.timeout}s 内有效`,
             ''
           ].join('\n')
@@ -433,7 +434,7 @@ const authListenCommand = defineCommand({
           data,
           render: () =>
             [
-              `received ${updated.join(', ')} from browser extension`,
+              `received ${updated.join(', ')} from browser bridge`,
               `saved    ${updated.join(', ')} -> ${path} (mode 0600)`,
               `token    ${data.fingerprint}`
             ].join('\n'),

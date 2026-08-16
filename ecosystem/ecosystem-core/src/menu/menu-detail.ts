@@ -1,4 +1,3 @@
-import type { MenuAdapter, MenuItemSpec } from './menu';
 import {
   BADGE_BOX_CLASS,
   BADGE_CLASS,
@@ -10,7 +9,8 @@ import {
   TITLE_CLASS,
   WRAPPER_CLASS,
   WRAPPER_STYLE
-} from './selectors';
+} from './detail-selectors';
+import type { MenuAdapter, MenuItemSpec } from './injector';
 
 const ITEM_FLAG = 'lanhuExtItem';
 

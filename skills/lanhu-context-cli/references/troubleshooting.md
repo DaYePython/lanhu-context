@@ -46,15 +46,16 @@ $ lanhu meta "$URL" --json
 
 ```text
 $ lanhu auth listen --timeout 1 --json
-listening  http://127.0.0.1:7623/token（仅接受 chrome-extension:// 来源）
+listening  http://127.0.0.1:7623/token（仅接受浏览器扩展 / 油猴脚本来源）
            在蓝湖设计稿页面右键点击「发送 cookies 到本机」，1s 内有效
- ERROR  TOKEN_MISSING: 等待浏览器扩展发送 Cookie 超时，未写入任何凭据
-{"ok":false,"command":"auth listen","error":{"code":"TOKEN_MISSING","severity":"fatal","message":"等待浏览器扩展发送 Cookie 超时，未写入任何凭据","hint":"在蓝湖页面右键点击「发送 cookies 到本机」，或改用 `lanhu auth set`","retryable":false}}
+ ERROR  TOKEN_MISSING: 等待浏览器扩展 / 油猴脚本发送 Cookie 超时，未写入任何凭据
+hint: 在蓝湖页面右键点击「发送 cookies 到本机」，或改用 lanhu auth set
+{"ok":false,"command":"auth listen","error":{"code":"TOKEN_MISSING","severity":"fatal","message":"等待浏览器扩展 / 油猴脚本发送 Cookie 超时，未写入任何凭据","hint":"在蓝湖页面右键点击「发送 cookies 到本机」，或改用 `lanhu auth set`","retryable":false}}
 # exit 3
 ```
 
-  - 原因：超时窗口内没点扩展菜单项、扩展没装/没重新加载、或扩展与 CLI 端口不一致。
-  - 动作：重跑 `lanhu auth listen`（可加 `--timeout 300` 放宽窗口），在超时前于蓝湖设计稿页面右键点「发送 cookies 到本机」；确认扩展已按 `ecosystem/browser-extension/README.md` 加载且端口一致；不方便装扩展就改走 `lanhu auth set`。
+  - 原因：超时窗口内没点菜单项、扩展/油猴脚本没装或没重新加载、或与 CLI 端口不一致。
+  - 动作：重跑 `lanhu auth listen`（可加 `--timeout 300` 放宽窗口），在超时前于蓝湖设计稿页面右键点「发送 cookies 到本机」；确认扩展已按 `ecosystem/browser-extension/README.md`（或油猴脚本按 `ecosystem/lanhu-monkey/README.md`）加载且端口一致；不方便装就改走 `lanhu auth set`。
 
 ## exit 4 — 认证/权限/空结果（`AUTH_EXPIRED` / `ACCESS_DENIED` / `EMPTY_RESULT` / `DESIGN_NOT_FOUND` / `TRANSCODE_NOT_ENABLED`）
 
@@ -100,7 +101,7 @@ $ lanhu meta "$URL" --timeout 1 --retries 0 --json
 
 - 症状：context/assets/preview 落盘失败。
 - 动作：检查 `--out-dir`/`-o` 目录是否存在、可写、磁盘是否满；`lanhu doctor --out-dir <实际输出目录> --json` 看 `cwd-writable` / `out-dir-writable`（目录已存在）或 `out-dir-creatable`（目录还不存在）两项——`--out-dir` 缺省时 doctor 检查默认的 `<cwd>/.lanhu.local`。
-- `auth listen` 分支：监听端口被占用（message 形如 `无法在 127.0.0.1:7623 上监听：…EADDRINUSE…`）。动作：换端口 `lanhu auth listen --port 7624`，并同步修改扩展 `src/shared/constants.ts` 的 `DEFAULT_BRIDGE_PORT` 后重新 build 加载。
+- `auth listen` 分支：监听端口被占用（message 形如 `无法在 127.0.0.1:7623 上监听：…EADDRINUSE…`）。动作：换端口 `lanhu auth listen --port 7624`，并同步修改 `ecosystem/ecosystem-core/src/constants.ts` 的 `DEFAULT_BRIDGE_PORT` 后重新 build 加载（扩展与油猴脚本共享该常量，两者都要重建）。
 
 ## exit 8 — `--strict` 升级的 warning
 

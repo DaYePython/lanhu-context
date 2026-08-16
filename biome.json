@@ -6,7 +6,13 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/node_modules", "!**/.claude"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/.claude",
+      "!ecosystem/lanhu-monkey/lanhu-monkey.user.js"
+    ]
   },
   "formatter": {
     "enabled": true,

@@ -31,7 +31,7 @@ diff /tmp/lanhu-tokens.css src/styles/design-tokens.css
 
 输入：任意命令报 exit 3（`TOKEN_MISSING`）或 exit 4（`AUTH_EXPIRED`），或用户明说要登录/配置蓝湖凭据。登录不要求先装好 CLI——npx 形态照常可用。
 
-装了配套浏览器扩展（安装见 `ecosystem/browser-extension/README.md`，GitHub Releases 有预构建 zip）→ 优先 `auth listen` 一键登录：
+装了配套浏览器扩展（安装见 `ecosystem/browser-extension/README.md`，GitHub Releases 有预构建 zip）或油猴脚本（安装见 `ecosystem/lanhu-monkey/README.md`，Releases 有预构建 .user.js）→ 优先 `auth listen` 一键登录：
 
 ```bash
 lanhu auth listen --json
@@ -43,14 +43,14 @@ npx -y -p @lanhu-context/cli lanhu auth listen --json
 
 ```text
 $ lanhu auth listen --json
-listening  http://127.0.0.1:7623/token（仅接受 chrome-extension:// 来源）
+listening  http://127.0.0.1:7623/token（仅接受浏览器扩展 / 油猴脚本来源）
            在蓝湖设计稿页面右键点击「发送 cookies 到本机」，120s 内有效
 ℹ 运行 `lanhu auth test <url>` 验证 token 活性
 {"ok":true,"command":"auth listen","data":{"path":"…/.config/lanhu/config.json","mode":"0600","updated":["LANHU_TOKEN"],"fingerprint":"sid=…AKE2 (length 19)"},"warnings":[],"meta":{"version":"0.5.0","durationMs":1374}}
 ```
 
 - 收到一次即写入用户级配置（0600）并退出；`data.updated` 列出写入项，`data.fingerprint` 是掩码指纹，不含明文（SKILL.md 边界 2 仍生效）。
-- 超时未点 → exit 3（`TOKEN_MISSING`）且不写任何凭据：重跑再点即可；端口被占 → exit 7，换 `--port` 需同步扩展常量（两者均见 [troubleshooting.md](troubleshooting.md)）。
+- 超时未点 → exit 3（`TOKEN_MISSING`）且不写任何凭据：重跑再点即可；端口被占 → exit 7，换 `--port` 需同步扩展/油猴共享常量（两者均见 [troubleshooting.md](troubleshooting.md)）。
 
 没装扩展 → `auth set` 手动粘贴：交互运行 `lanhu auth set`（stderr 打印获取 Cookie 的分步引导，输入隐藏不回显）；CI/脚本走 `printf "%s\n" "$LANHU_TOKEN" | lanhu auth set --token-stdin`；或直接写 `<cwd>/.env.local`（`LANHU_TOKEN=...`）。
 

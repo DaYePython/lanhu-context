@@ -1,0 +1,20 @@
+{
+  "name": "@lanhu-context/lanhu-monkey",
+  "version": "0.0.0",
+  "private": true,
+  "description": "蓝湖设计稿油猴脚本：在详情页与画布页右键菜单注入复制设计稿链接、复制 Cookie、发送 Cookie 到本机，配合 lanhu-context CLI 使用",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lanhu-context/ecosystem-core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vite": "^7.0.0",
+    "vite-plugin-monkey": "^7.1.9"
+  }
+}

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { injectInto } from '../menu';
+import { injectInto } from '../injector';
 import { buildStageRow, stageMenuAdapter } from '../menu-stage';
 import { STAGE_ITEM_CLASS, STAGE_LABEL_PREFIX } from '../stage-selectors';
 

@@ -61,3 +61,11 @@ jobs:
     needs: release
     uses: ./.github/workflows/release-extension.yml
     secrets: inherit
+
+  # Same pattern for the lanhu-monkey userscript: its artifact is a plain
+  # .user.js attached to the release of its own changesets tag.
+  lanhu-monkey:
+    name: Release Userscript
+    needs: release
+    uses: ./.github/workflows/release-userscript.yml
+    secrets: inherit
