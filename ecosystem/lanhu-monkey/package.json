@@ -1,6 +1,6 @@
 {
   "name": "@lanhu-context/lanhu-monkey",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "蓝湖设计稿油猴脚本：在详情页与画布页右键菜单注入复制设计稿链接、复制 Cookie、发送 Cookie 到本机，配合 lanhu-context CLI 使用",
   "type": "module",
