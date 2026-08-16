@@ -1,5 +1,11 @@
 # @lanhu-context/lanhu-monkey
 
+## 0.1.1
+
+### Patch Changes
+
+- 26be471: 发版流水线端到端验证：不改行为，仅验证 tag → Release 附件 → 产物回写 main → GreasyFork webhook 自动更新整条链路。
+
 ## 0.1.0
 
 ### Minor Changes
