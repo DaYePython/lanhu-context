@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         蓝湖 lanhu-context 助手
 // @namespace    https://github.com/DaYePython/lanhu-context
-// @version      0.1.0
+// @version      0.1.1
 // @description  在蓝湖设计稿详情页与画布页复制设计稿链接与登录 Cookie，配合 lanhu-context CLI 使用。
 // @license      MIT
 // @icon         https://raw.githubusercontent.com/DaYePython/lanhu-context/main/ecosystem/browser-extension/public/icons/icon48.png
