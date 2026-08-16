@@ -36,20 +36,30 @@ export function parseHashParams(href: string): URLSearchParams | null {
   return new URLSearchParams(fragment.slice(queryIndex + 1));
 }
 
+export interface DesignRefParts {
+  teamId: string | null;
+  projectId: string | null;
+  imageId: string | null;
+}
+
 /**
- * Mirrors lanhu's own getTeamId() chain: url first, then localStorage.
+ * Mirrors lanhu's own getTeamId()/_getPID() chains: url first, then
+ * localStorage.
  *
- * This is not defensive padding — MarkLeft.changeUrlQuery rewrites the query
- * to {pid, project_id, image_id} whenever the user switches designs, so the
- * url loses `tid` on the most common path through the page.
+ * This is not defensive padding — both pages rewrite their own query. On
+ * detailDetach, MarkLeft.changeUrlQuery drops `tid` when the user switches
+ * designs; on stage, changeProject rebuilds the query as {type, pid, teamId},
+ * dropping `tid` and switching to the camelCase spelling.
  *
- * imageId deliberately has no storage fallback: it is always present in the
- * url, and a stale stored value would silently reference the wrong design.
+ * `imageIdOverride` carries the right-clicked design on the stage page, where
+ * the url has no image id at all. It wins over the url because a click target
+ * is more specific than the address bar.
  */
-export function resolveDesignRef(
+export function resolveDesignRefParts(
   href: string,
-  storage: StorageLike
-): DesignRef | null {
+  storage: StorageLike,
+  imageIdOverride?: string | null
+): DesignRefParts {
   const params = parseHashParams(href);
 
   const fromUrl = (...keys: string[]): string | null => {
@@ -70,24 +80,42 @@ export function resolveDesignRef(
     }
   };
 
-  const teamId = fromUrl('tid', 'team_id') ?? fromStorage('team_id');
-  const projectId = fromUrl('pid', 'project_id') ?? fromStorage('pid');
-  const imageId = fromUrl('image_id', 'docId');
+  return {
+    teamId: fromUrl('tid', 'teamId', 'team_id') ?? fromStorage('team_id'),
+    projectId: fromUrl('pid', 'project_id') ?? fromStorage('pid'),
+    // No storage fallback for the image id: a stale stored value would
+    // silently reference the wrong design.
+    imageId: clean(imageIdOverride) ?? fromUrl('image_id', 'docId')
+  };
+}
 
+export function resolveDesignRef(
+  href: string,
+  storage: StorageLike,
+  imageIdOverride?: string | null
+): DesignRef | null {
+  const { teamId, projectId, imageId } = resolveDesignRefParts(
+    href,
+    storage,
+    imageIdOverride
+  );
   if (!teamId || !projectId || !imageId) return null;
   return { teamId, projectId, imageId };
 }
 
 /**
- * Rebuilds the canonical three-param form — including the `tid` the live url
- * may have dropped. Lanhu's own links carry extra params (comment_id,
- * version_id, …) that the CLI ignores; dropping them keeps the copied link
- * short and stable.
+ * Rebuilds the canonical form — including the `tid` the live url may have
+ * dropped. `project_id` duplicates `pid` on purpose: the detail page seeds
+ * `project.id` from it and starts out undefined without it, and lanhu's own
+ * links always carry both. Everything else lanhu appends (comment_id,
+ * version_id, fromEditor, …) is dropped: version_id only ever serves comment
+ * anchoring, and nothing in a link encodes "the version I was looking at".
  */
 export function buildDesignUrl(ref: DesignRef): string {
   const params = new URLSearchParams({
     tid: ref.teamId,
     pid: ref.projectId,
+    project_id: ref.projectId,
     image_id: ref.imageId
   });
   return `${LANHU_ORIGIN}/web/#/${DESIGN_DETAIL_PATH}?${params.toString()}`;

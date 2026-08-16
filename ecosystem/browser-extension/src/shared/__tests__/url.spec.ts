@@ -4,6 +4,7 @@ import {
   buildDesignUrl,
   parseHashParams,
   resolveDesignRef,
+  resolveDesignRefParts,
   type StorageLike
 } from '../url';
 
@@ -148,8 +149,11 @@ describe('buildDesignUrl', () => {
   const ref = { teamId: 'T1', projectId: 'P1', imageId: 'I1' };
 
   it('builds a canonical detailDetach url', () => {
+    // project_id rides along because the detail page seeds `project.id` from
+    // it; with only pid that field starts out undefined. Lanhu itself always
+    // sends both.
     expect(buildDesignUrl(ref)).toBe(
-      'https://lanhuapp.com/web/#/item/project/detailDetach?tid=T1&pid=P1&image_id=I1'
+      'https://lanhuapp.com/web/#/item/project/detailDetach?tid=T1&pid=P1&project_id=P1&image_id=I1'
     );
   });
 
@@ -171,5 +175,68 @@ describe('buildDesignUrl', () => {
   it('percent-encodes ids that contain url-unsafe characters', () => {
     const url = buildDesignUrl({ ...ref, imageId: 'a b&c' });
     expect(url).toContain('image_id=a+b%26c');
+  });
+});
+
+describe('resolveDesignRef — stage page support', () => {
+  const emptyStorage = { getItem: () => null };
+
+  it('takes the image id from the caller when the url has none', () => {
+    const href = 'https://lanhuapp.com/web/#/item/project/stage?tid=T&pid=P';
+    expect(resolveDesignRef(href, emptyStorage, 'IMG')).toEqual({
+      teamId: 'T',
+      projectId: 'P',
+      imageId: 'IMG'
+    });
+  });
+
+  it('prefers the caller image id over the one in the url', () => {
+    // The right-clicked design is more specific than the address bar.
+    const href =
+      'https://lanhuapp.com/web/#/item/project/detailDetach?tid=T&pid=P&image_id=FROM_URL';
+    expect(resolveDesignRef(href, emptyStorage, 'FROM_CLICK')?.imageId).toBe(
+      'FROM_CLICK'
+    );
+  });
+
+  it('falls back to the url when the caller passes a placeholder', () => {
+    const href =
+      'https://lanhuapp.com/web/#/item/project/detailDetach?tid=T&pid=P&image_id=I';
+    expect(resolveDesignRef(href, emptyStorage, 'undefined')?.imageId).toBe('I');
+    expect(resolveDesignRef(href, emptyStorage, null)?.imageId).toBe('I');
+  });
+
+  it('accepts the camelCase teamId the stage page rewrites urls to', () => {
+    // changeProject rebuilds the query as {type, pid, teamId} — tid is dropped.
+    const href = 'https://lanhuapp.com/web/#/item/project/stage?teamId=T&pid=P';
+    expect(resolveDesignRef(href, emptyStorage, 'IMG')?.teamId).toBe('T');
+  });
+
+  it('still returns null when no image id is available anywhere', () => {
+    const href = 'https://lanhuapp.com/web/#/item/project/stage?tid=T&pid=P';
+    expect(resolveDesignRef(href, emptyStorage, null)).toBeNull();
+  });
+});
+
+describe('resolveDesignRefParts', () => {
+  const emptyStorage = { getItem: () => null };
+
+  it('reports exactly which ids are missing', () => {
+    const href = 'https://lanhuapp.com/web/#/item/project/stage?pid=P';
+    expect(resolveDesignRefParts(href, emptyStorage, null)).toEqual({
+      teamId: null,
+      projectId: 'P',
+      imageId: null
+    });
+  });
+
+  it('agrees with resolveDesignRef when everything resolves', () => {
+    const href =
+      'https://lanhuapp.com/web/#/item/project/detailDetach?tid=T&pid=P&image_id=I';
+    expect(resolveDesignRefParts(href, emptyStorage)).toEqual({
+      teamId: 'T',
+      projectId: 'P',
+      imageId: 'I'
+    });
   });
 });
