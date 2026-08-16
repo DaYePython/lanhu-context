@@ -1,6 +1,6 @@
 {
   "name": "@lanhu-context/ecosystem-core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "browser-extension 与 lanhu-monkey 的共享层：蓝湖页面菜单注入、设计稿 URL 解析构建、Cookie 序列化与本机桥接",
   "type": "module",
