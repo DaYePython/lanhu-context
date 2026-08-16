@@ -69,7 +69,11 @@ lanhu auth test "<设计稿URL>"
 ## 权限说明
 
 - `permissions`: `cookies`（读取 lanhuapp.com Cookie，含 HttpOnly——这正是做成扩展而非油猴脚本的原因）、`clipboardWrite`
-- `host_permissions`: 仅 `https://*.lanhuapp.com/*` 与 `http://127.0.0.1/*`，不触达其他站点
+- `host_permissions`: 仅 `lanhuapp.com`（**http 与 https 两条都要**）与 `http://127.0.0.1/*`，不触达其他站点
+
+### 为什么 lanhuapp.com 需要 http 与 https 两条
+
+Chrome 判断扩展能否读一条 Cookie 时，按该 Cookie 的 `Secure` 标志拼 URL 再匹配 `host_permissions`：Secure 的按 `https://`，非 Secure 的按 **`http://`**。蓝湖的会话 Cookie 里只有 `PASSPORT` 是 Secure，`user_token` / `session` / `SERVERID` 都不是——只声明 https 时，`chrome.cookies` 会**静默**只返回 `PASSPORT` 一条，复制出来的 Cookie 不足以通过 `lanhu auth test`。删掉 http 那条即复现此问题。
 
 ## 安全提示
 

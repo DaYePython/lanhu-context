@@ -19,7 +19,13 @@ export {
   DESIGN_DETAIL_PATH,
   LANHU_ORIGIN
 } from './constants';
-export { type CookieLike, formatCookieHeader, sortCookies } from './cookies';
+export {
+  type CookieLike,
+  formatCookieHeader,
+  mergeCookies,
+  sortCookies
+} from './cookies';
+export { parseDocumentCookie } from './doc-cookie';
 export * from './menu/detail-selectors';
 export {
   ITEM_ATTR,

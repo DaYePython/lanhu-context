@@ -27,3 +27,20 @@ export function formatCookieHeader(cookies: CookieLike[]): string {
     .map(cookie => `${cookie.name}=${cookie.value}`)
     .join('; ');
 }
+
+/**
+ * Unions a privileged cookie list with the page's own `document.cookie`, so a
+ * host never emits fewer cookies than the page itself would send.
+ *
+ * The privileged list wins on a name clash: it is the richer record (carries
+ * path, and includes HttpOnly entries document.cookie cannot see). Names only
+ * the page knows are appended — that is what rescues a session when the
+ * privileged query comes back unexpectedly narrow.
+ */
+export function mergeCookies(
+  privileged: CookieLike[],
+  fromPage: CookieLike[]
+): CookieLike[] {
+  const seen = new Set(privileged.map(cookie => cookie.name));
+  return [...privileged, ...fromPage.filter(cookie => !seen.has(cookie.name))];
+}

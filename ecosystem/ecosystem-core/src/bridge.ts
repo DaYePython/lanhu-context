@@ -1,5 +1,5 @@
 import { BRIDGE_PATH } from './constants';
-import { type CookieLike, formatCookieHeader } from './cookies';
+import { type CookieLike, formatCookieHeader, mergeCookies } from './cookies';
 
 export interface CookieApi {
   getAll(details: { domain: string }): Promise<CookieLike[]>;
@@ -24,12 +24,19 @@ export type BridgeFetch = (
 /**
  * The cookie source is injected per platform: the extension passes
  * chrome.cookies (matches subdomains and, unlike document.cookie, returns
- * HttpOnly entries), the userscript passes a GM_cookie adapter with a
- * document.cookie fallback.
+ * HttpOnly entries), the userscript passes a GM_cookie adapter.
+ *
+ * `fromPage` carries the host's own `document.cookie`. Both platforms pass it:
+ * a privileged API can come back narrower than the page's own cookie jar
+ * (partitioned entries, a manager that only exposes some, a denied setting),
+ * and silently emitting a half session is worse than emitting a full one.
  */
-export async function collectCookieHeader(api: CookieApi): Promise<string> {
+export async function collectCookieHeader(
+  api: CookieApi,
+  fromPage: CookieLike[] = []
+): Promise<string> {
   const cookies = await api.getAll({ domain: 'lanhuapp.com' });
-  const header = formatCookieHeader(cookies);
+  const header = formatCookieHeader(mergeCookies(cookies, fromPage));
   if (!header) throw new Error('NO_COOKIES');
   return header;
 }

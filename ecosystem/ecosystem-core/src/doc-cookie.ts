@@ -1,4 +1,4 @@
-import type { CookieLike } from '@lanhu-context/ecosystem-core';
+import type { CookieLike } from './cookies';
 
 /**
  * document.cookie already lists cookies in the browser's own precedence

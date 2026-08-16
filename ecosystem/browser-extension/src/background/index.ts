@@ -1,13 +1,17 @@
 import {
   collectCookieHeader,
   DEFAULT_BRIDGE_PORT,
+  parseDocumentCookie,
   sendCookieHeader
 } from '@lanhu-context/ecosystem-core';
 import type { BackgroundMessage, BackgroundReply } from '../shared/protocol';
 
 async function handle(message: BackgroundMessage): Promise<BackgroundReply> {
   try {
-    const token = await collectCookieHeader(chrome.cookies);
+    const token = await collectCookieHeader(
+      chrome.cookies,
+      parseDocumentCookie(message.pageCookie ?? '')
+    );
     if (message.type === 'copy-cookies') return { ok: true, token };
 
     const result = await sendCookieHeader(fetch, DEFAULT_BRIDGE_PORT, token);

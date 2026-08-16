@@ -30,6 +30,8 @@ pnpm vitest run ecosystem/browser-extension               # 本包仅剩消息�
 - **token 安全**（继承根 CLAUDE.md）：整段 Cookie 等同账号凭据。测试与文档一律用 `sid=FAKE` 类占位符，绝不出现真实 Cookie；日志/toast 不回显 token 内容。
 - **crx 签名 key 同凭据级**：key 决定扩展 ID，换 key 等于换扩展。本地 `key.pem` 与一切 `*.pem`/`*.crx` 已被根 .gitignore 拦截，绝不入库；CI 从 repo secret `LANHU_EXT_CRX_KEY` 读取（缺失时 workflow 明确报错，不静默跳过）。manifest 版本号唯一事实源是 package.json（changesets 管理），`public/manifest.json` 里的 version 只是占位，构建时被 `scripts/build.ts` 覆写。
 - **manifest 权限最小化**：`cookies` + `clipboardWrite`，`host_permissions` 仅 `*.lanhuapp.com` 与 `127.0.0.1`；新增权限需先在 README「权限说明」给出理由。
+- **`host_permissions` 的 `http://*.lanhuapp.com/*` 不是冗余，删了会静默丢 Cookie**：Chrome 按 Cookie 的 `Secure` 标志拼 URL 再匹配 host_permissions（Secure→`https://`，非 Secure→`http://`）。蓝湖只有 `PASSPORT` 是 Secure，`user_token`/`session`/`SERVERID` 都不是——只留 https 时 `chrome.cookies.getAll` 只返回 `PASSPORT` 一条且不报错（2026-08 实测）。油猴无此问题是因为 Tampermonkey 自带全站权限。
+- **Cookie 采集是两个来源合并**：service worker 的 `chrome.cookies`（唯一能拿 HttpOnly 的来源）+ content script 随消息带上的 `document.cookie`（`BackgroundMessage.pageCookie`），在 core 的 `mergeCookies` 里同名以前者为准。保留页面这一路的意义：权限或分区导致特权查询变窄时，扩展至少不会比页面本身能发出的 Cookie 还少。
 
 ## 权威文档
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCookieHeader, sortCookies } from '../cookies';
+import { formatCookieHeader, mergeCookies, sortCookies } from '../cookies';
 
 describe('formatCookieHeader', () => {
   it('joins name=value pairs with "; "', () => {
@@ -66,5 +66,44 @@ describe('sortCookies', () => {
     ];
     sortCookies(input);
     expect(input[0]?.name).toBe('root');
+  });
+});
+
+describe('mergeCookies', () => {
+  it('adds names only the page knows about', () => {
+    // The regression this guards: a privileged query that comes back with one
+    // entry must not shrink the header below what the page itself would send.
+    const merged = mergeCookies(
+      [{ name: 'PASSPORT', value: 'FAKE1', path: '/' }],
+      [
+        { name: 'PASSPORT', value: 'STALE' },
+        { name: 'sid', value: 'FAKE2' }
+      ]
+    );
+    expect(merged).toEqual([
+      { name: 'PASSPORT', value: 'FAKE1', path: '/' },
+      { name: 'sid', value: 'FAKE2' }
+    ]);
+  });
+
+  it('keeps the privileged value on a name clash', () => {
+    // chrome.cookies/GM_cookie carry path and HttpOnly entries; the page copy
+    // is the weaker record.
+    const merged = mergeCookies(
+      [{ name: 'sid', value: 'PRIVILEGED' }],
+      [{ name: 'sid', value: 'FROM_PAGE' }]
+    );
+    expect(merged).toEqual([{ name: 'sid', value: 'PRIVILEGED' }]);
+  });
+
+  it('falls back to the page list when the privileged one is empty', () => {
+    expect(mergeCookies([], [{ name: 'sid', value: 'FAKE' }])).toEqual([
+      { name: 'sid', value: 'FAKE' }
+    ]);
+  });
+
+  it('is a no-op without page cookies', () => {
+    const privileged = [{ name: 'sid', value: 'FAKE', path: '/' }];
+    expect(mergeCookies(privileged, [])).toEqual(privileged);
   });
 });

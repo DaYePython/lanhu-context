@@ -17,6 +17,27 @@ describe('collectCookieHeader', () => {
     const getAll = vi.fn().mockResolvedValue([]);
     await expect(collectCookieHeader({ getAll })).rejects.toThrow('NO_COOKIES');
   });
+
+  it('merges in page cookies the privileged query missed', async () => {
+    // Observed in the wild: chrome.cookies returned only PASSPORT while the
+    // page's own jar held the rest of the session.
+    const getAll = vi
+      .fn()
+      .mockResolvedValue([{ name: 'PASSPORT', value: 'FAKE1', path: '/' }]);
+    await expect(
+      collectCookieHeader({ getAll }, [
+        { name: 'sid', value: 'FAKE2' },
+        { name: 'uid', value: 'FAKE3' }
+      ])
+    ).resolves.toBe('PASSPORT=FAKE1; sid=FAKE2; uid=FAKE3');
+  });
+
+  it('still yields a header when only the page has cookies', async () => {
+    const getAll = vi.fn().mockResolvedValue([]);
+    await expect(
+      collectCookieHeader({ getAll }, [{ name: 'sid', value: 'FAKE' }])
+    ).resolves.toBe('sid=FAKE');
+  });
 });
 
 describe('sendCookieHeader', () => {

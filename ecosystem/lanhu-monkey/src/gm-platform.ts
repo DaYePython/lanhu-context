@@ -7,11 +7,11 @@ import {
   copyText as domCopyText,
   formatCookieHeader,
   type MenuPlatform,
+  parseDocumentCookie,
   sendCookieHeader as postCookieHeader,
   type SendOutcome
 } from '@lanhu-context/ecosystem-core';
 import { GM_cookie, GM_setClipboard, GM_xmlhttpRequest } from '$';
-import { parseDocumentCookie } from './doc-cookie';
 
 const NO_COOKIE_ERROR = '未找到 lanhuapp.com 的 Cookie，请先登录';
 
@@ -41,9 +41,10 @@ function listGmCookies(domain: string): Promise<CookieLike[]> {
  */
 async function readCookieHeader(): Promise<CookieHeaderResult> {
   try {
-    const token = await collectCookieHeader({
-      getAll: ({ domain }) => listGmCookies(domain)
-    });
+    const token = await collectCookieHeader(
+      { getAll: ({ domain }) => listGmCookies(domain) },
+      parseDocumentCookie(document.cookie)
+    );
     return { ok: true, token };
   } catch {
     // Fall through to the degraded path.
