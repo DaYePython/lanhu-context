@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         蓝湖 lanhu-context 助手
 // @namespace    https://github.com/DaYePython/lanhu-context
-// @version      0.1.1
+// @version      0.1.2
 // @description  在蓝湖设计稿详情页与画布页复制设计稿链接与登录 Cookie，配合 lanhu-context CLI 使用。
 // @license      MIT
 // @icon         https://raw.githubusercontent.com/DaYePython/lanhu-context/main/ecosystem/browser-extension/public/icons/icon48.png
@@ -334,9 +334,13 @@ imageId: clean(imageIdOverride) ?? fromUrl("image_id", "docId")
   function formatCookieHeader(cookies) {
     return sortCookies(cookies).filter((cookie) => cookie.name.length > 0).map((cookie) => `${cookie.name}=${cookie.value}`).join("; ");
   }
-  async function collectCookieHeader(api) {
+  function mergeCookies(privileged, fromPage) {
+    const seen = new Set(privileged.map((cookie) => cookie.name));
+    return [...privileged, ...fromPage.filter((cookie) => !seen.has(cookie.name))];
+  }
+  async function collectCookieHeader(api, fromPage = []) {
     const cookies = await api.getAll({ domain: "lanhuapp.com" });
-    const header = formatCookieHeader(cookies);
+    const header = formatCookieHeader(mergeCookies(cookies, fromPage));
     if (!header) throw new Error("NO_COOKIES");
     return header;
   }
@@ -379,9 +383,6 @@ imageId: clean(imageIdOverride) ?? fromUrl("image_id", "docId")
       textarea.remove();
     }
   }
-  var _GM_cookie = (() => typeof GM_cookie != "undefined" ? GM_cookie : void 0)();
-  var _GM_setClipboard = (() => typeof GM_setClipboard != "undefined" ? GM_setClipboard : void 0)();
-  var _GM_xmlhttpRequest = (() => typeof GM_xmlhttpRequest != "undefined" ? GM_xmlhttpRequest : void 0)();
   function parseDocumentCookie(raw) {
     const cookies = [];
     for (const part of raw.split(";")) {
@@ -393,6 +394,9 @@ imageId: clean(imageIdOverride) ?? fromUrl("image_id", "docId")
     }
     return cookies;
   }
+  var _GM_cookie = (() => typeof GM_cookie != "undefined" ? GM_cookie : void 0)();
+  var _GM_setClipboard = (() => typeof GM_setClipboard != "undefined" ? GM_setClipboard : void 0)();
+  var _GM_xmlhttpRequest = (() => typeof GM_xmlhttpRequest != "undefined" ? GM_xmlhttpRequest : void 0)();
   const NO_COOKIE_ERROR = "未找到 lanhuapp.com 的 Cookie，请先登录";
   const HTTP_ONLY_NOTE = "本次未含 HttpOnly Cookie（Tampermonkey 需在 设置 → Security → Allow scripts to access cookies 选 All）；若 lanhu auth test 失败请改用浏览器扩展";
   function listGmCookies(domain) {
@@ -409,9 +413,10 @@ imageId: clean(imageIdOverride) ?? fromUrl("image_id", "docId")
   }
   async function readCookieHeader() {
     try {
-      const token = await collectCookieHeader({
-        getAll: ({ domain }) => listGmCookies(domain)
-      });
+      const token = await collectCookieHeader(
+        { getAll: ({ domain }) => listGmCookies(domain) },
+        parseDocumentCookie(document.cookie)
+      );
       return { ok: true, token };
     } catch {
     }
