@@ -1,7 +1,14 @@
-import type { BackgroundMessage, BackgroundReply } from '../shared/protocol';
-import { buildDesignUrl, resolveDesignRef } from '../shared/url';
+import {
+  buildDesignUrl,
+  type DesignRefParts,
+  resolveDesignRefParts
+} from '../shared/url';
 import { copyText } from './clipboard';
 import { installMenuInjector, type MenuItemSpec } from './menu';
+import { detailMenuAdapter } from './menu-detail';
+import { stageMenuAdapter } from './menu-stage';
+import { ask } from './messaging';
+import { readStageImageId } from './stage-target';
 
 function toast(message: string): void {
   const el = document.createElement('div');
@@ -23,19 +30,41 @@ function toast(message: string): void {
   setTimeout(() => el.remove(), 2400);
 }
 
-function ask(message: BackgroundMessage): Promise<BackgroundReply> {
-  return chrome.runtime.sendMessage(message) as Promise<BackgroundReply>;
-}
+const PARAM_LABELS: Record<keyof DesignRefParts, string> = {
+  teamId: 'tid',
+  projectId: 'pid',
+  imageId: 'image_id'
+};
 
 async function copyDesignUrl(): Promise<void> {
   // Content scripts share the page origin, so this is the same localStorage
-  // lanhu itself falls back to when the url has no tid.
-  const ref = resolveDesignRef(location.href, localStorage);
-  if (!ref) {
-    toast('未识别到设计稿参数（tid / pid / image_id 均无法获取）');
+  // lanhu itself falls back to. On stage the url carries no image id at all —
+  // readStageImageId digs the right-clicked design out of the nav tree, and
+  // returns null on the detail page, where the url already has one.
+  const parts = resolveDesignRefParts(
+    location.href,
+    localStorage,
+    readStageImageId(document)
+  );
+  const missing = (
+    Object.keys(PARAM_LABELS) as (keyof DesignRefParts)[]
+  ).filter(key => !parts[key]);
+
+  if (missing.length > 0) {
+    toast(
+      `未识别到设计稿参数：缺少 ${missing
+        .map(key => PARAM_LABELS[key])
+        .join(' / ')}`
+    );
     return;
   }
-  const ok = await copyText(buildDesignUrl(ref));
+
+  const url = buildDesignUrl({
+    teamId: parts.teamId as string,
+    projectId: parts.projectId as string,
+    imageId: parts.imageId as string
+  });
+  const ok = await copyText(url);
   toast(ok ? '已复制设计稿链接' : '复制失败，请检查剪贴板权限');
 }
 
@@ -81,4 +110,6 @@ const specs: MenuItemSpec[] = [
   }
 ];
 
-installMenuInjector(document.body, specs);
+// Both adapters are installed unconditionally; each claims its own menu by
+// selector, so detailDetach and stage need no route detection.
+installMenuInjector(document.body, specs, [detailMenuAdapter, stageMenuAdapter]);
