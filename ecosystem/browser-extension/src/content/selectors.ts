@@ -1,4 +1,4 @@
-// Measured on the live detailDetach page (2026-08-16). See NOTES.md for the
+// Measured on the live detailDetach page (2026-08-16). See docs/NOTES.md for the
 // captured outerHTML. Lanhu renders its context menu with muse-ui, whose
 // class names are build-dependent, so every selector here is recorded from
 // the real DOM rather than inferred from source.

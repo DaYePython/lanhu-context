@@ -17,7 +17,7 @@ const specs = [
 ];
 
 /**
- * Verbatim host markup captured in NOTES.md: popover > .mu-menu >
+ * Verbatim host markup captured in docs/NOTES.md: popover > .mu-menu >
  * .mu-menu-list > one native row ("返回"), plus a row injected by the
  * third-party helper that was present during recon.
  */

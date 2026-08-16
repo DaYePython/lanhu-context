@@ -23,7 +23,7 @@ const INJECTED_FLAG = 'lanhuExtInjected';
 const ITEM_FLAG = 'lanhuExtItem';
 
 /**
- * Rebuilds the host's row markup node for node (see NOTES.md). muse-ui styles
+ * Rebuilds the host's row markup node for node (see docs/NOTES.md). muse-ui styles
  * key off this exact nesting, so a flatter approximation renders unstyled:
  *
  *   div[data-lanhu-ext-item]

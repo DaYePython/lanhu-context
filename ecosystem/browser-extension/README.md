@@ -58,4 +58,4 @@ lanhu auth test "<设计稿URL>"
 
 ## 蓝湖改版导致菜单项消失时
 
-注入依赖实测选择器（`src/content/selectors.ts`，实测记录见 [NOTES.md](NOTES.md)）。若蓝湖前端改版导致选择器失效，注入会静默失败（不报错）；按仓库 `plan.md` Task 1 折叠区的「侦察方法留档」重测并更新 `selectors.ts` 即可，业务逻辑无需改动。
+注入依赖实测选择器（`src/content/selectors.ts`，实测记录见 [docs/NOTES.md](docs/NOTES.md)）。若蓝湖前端改版导致选择器失效，注入会静默失败（不报错）；按 [docs/implementation-plan.md](docs/implementation-plan.md) Task 1 折叠区的「侦察方法留档」重测并更新 `selectors.ts` 即可，业务逻辑无需改动。
