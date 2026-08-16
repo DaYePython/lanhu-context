@@ -8,6 +8,10 @@ coverage/
 !.env.local.example
 .claude/settings.local.json
 
+# machine-local Claude Code instructions (not team-shared)
+CLAUDE.local.md
+.claude/agents/lanhu-bundle-reader.md
+
 .DS_Store
 
 # manual playground records (privacy)
