@@ -1,4 +1,4 @@
-import { type MenuAdapter, type MenuItemSpec } from './menu';
+import type { MenuAdapter, MenuItemSpec } from './menu';
 import {
   BADGE_BOX_CLASS,
   BADGE_CLASS,

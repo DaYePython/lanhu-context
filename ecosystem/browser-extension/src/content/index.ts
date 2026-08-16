@@ -112,4 +112,7 @@ const specs: MenuItemSpec[] = [
 
 // Both adapters are installed unconditionally; each claims its own menu by
 // selector, so detailDetach and stage need no route detection.
-installMenuInjector(document.body, specs, [detailMenuAdapter, stageMenuAdapter]);
+installMenuInjector(document.body, specs, [
+  detailMenuAdapter,
+  stageMenuAdapter
+]);

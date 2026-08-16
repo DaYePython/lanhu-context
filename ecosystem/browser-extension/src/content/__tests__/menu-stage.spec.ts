@@ -90,9 +90,9 @@ describe('buildStageRow', () => {
   it('invokes onSelect when the click lands on the inner label', () => {
     const row = buildStageRow(specs[0]!);
     document.body.append(row);
-    row.querySelector('p')!.dispatchEvent(
-      new MouseEvent('click', { bubbles: true })
-    );
+    row
+      .querySelector('p')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(specs[0]!.onSelect).toHaveBeenCalledOnce();
   });
 

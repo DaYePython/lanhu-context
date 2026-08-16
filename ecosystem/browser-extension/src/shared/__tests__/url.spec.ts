@@ -202,7 +202,9 @@ describe('resolveDesignRef — stage page support', () => {
   it('falls back to the url when the caller passes a placeholder', () => {
     const href =
       'https://lanhuapp.com/web/#/item/project/detailDetach?tid=T&pid=P&image_id=I';
-    expect(resolveDesignRef(href, emptyStorage, 'undefined')?.imageId).toBe('I');
+    expect(resolveDesignRef(href, emptyStorage, 'undefined')?.imageId).toBe(
+      'I'
+    );
     expect(resolveDesignRef(href, emptyStorage, null)?.imageId).toBe('I');
   });
 

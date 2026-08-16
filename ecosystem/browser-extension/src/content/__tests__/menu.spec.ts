@@ -183,7 +183,9 @@ describe('injectInto', () => {
 
 describe('installMenuInjector', () => {
   it('injects into dialogs added after install', async () => {
-    const dispose = installMenuInjector(document.body, specs, [detailMenuAdapter]);
+    const dispose = installMenuInjector(document.body, specs, [
+      detailMenuAdapter
+    ]);
     const dialog = makeDialog();
     document.body.append(dialog);
 
@@ -194,7 +196,9 @@ describe('installMenuInjector', () => {
   });
 
   it('injects into a dialog nested inside an added subtree', async () => {
-    const dispose = installMenuInjector(document.body, specs, [detailMenuAdapter]);
+    const dispose = installMenuInjector(document.body, specs, [
+      detailMenuAdapter
+    ]);
     const wrapper = document.createElement('div');
     wrapper.append(makeDialog());
     document.body.append(wrapper);
@@ -206,7 +210,9 @@ describe('installMenuInjector', () => {
   });
 
   it('re-injects when lanhu rebuilds the menu on the next right-click', async () => {
-    const dispose = installMenuInjector(document.body, specs, [detailMenuAdapter]);
+    const dispose = installMenuInjector(document.body, specs, [
+      detailMenuAdapter
+    ]);
     const first = makeDialog();
     document.body.append(first);
     await vi.waitFor(() =>
@@ -223,7 +229,9 @@ describe('installMenuInjector', () => {
   });
 
   it('stops injecting after dispose', async () => {
-    const dispose = installMenuInjector(document.body, specs, [detailMenuAdapter]);
+    const dispose = installMenuInjector(document.body, specs, [
+      detailMenuAdapter
+    ]);
     dispose();
     const dialog = makeDialog();
     document.body.append(dialog);
@@ -246,7 +254,9 @@ describe('installMenuInjector', () => {
     for (const row of dialog.querySelectorAll('[data-lanhu-ext-item]')) {
       row.remove();
     }
-    dialog.querySelector('.mu-menu-list')!.append(document.createElement('div'));
+    dialog
+      .querySelector('.mu-menu-list')!
+      .append(document.createElement('div'));
 
     await vi.waitFor(() =>
       expect(itemCount(dialog)).toBe(HOST_ITEMS + specs.length)
