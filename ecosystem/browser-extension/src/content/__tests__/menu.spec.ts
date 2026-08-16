@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildMenuItem, injectInto, installMenuInjector } from '../menu';
+import { injectInto, installMenuInjector } from '../menu';
+import { buildDetailRow, detailMenuAdapter } from '../menu-detail';
 import {
   BADGE_CLASS,
   ITEM_SELECTOR,
@@ -66,9 +67,9 @@ beforeEach(() => {
   for (const spec of specs) spec.onSelect.mockClear();
 });
 
-describe('buildMenuItem', () => {
+describe('buildDetailRow', () => {
   it('reproduces the host row nesting exactly', () => {
-    const row = buildMenuItem(specs[0]!);
+    const row = buildDetailRow(specs[0]!);
     const wrapper = row.firstElementChild as HTMLElement;
     expect(wrapper.className).toBe(WRAPPER_CLASS);
     expect(wrapper.getAttribute('tabindex')).toBe('0');
@@ -83,36 +84,36 @@ describe('buildMenuItem', () => {
   });
 
   it('renders the label into the title span', () => {
-    const row = buildMenuItem(specs[0]!);
+    const row = buildDetailRow(specs[0]!);
     expect(row.querySelector(`.${TITLE_CLASS}`)?.textContent).toBe(
       '复制选中设计稿链接'
     );
   });
 
   it('renders a badge when one is supplied', () => {
-    const row = buildMenuItem({ ...specs[0]!, badge: 'CLI' });
+    const row = buildDetailRow({ ...specs[0]!, badge: 'CLI' });
     expect(row.querySelector(`.${BADGE_CLASS}`)?.textContent).toBe('CLI');
   });
 
   it('leaves the trailing slot empty when no badge is supplied', () => {
-    const row = buildMenuItem(specs[0]!);
+    const row = buildDetailRow(specs[0]!);
     expect(row.querySelector(`.${BADGE_CLASS}`)).toBeNull();
   });
 
   it('namespaces its marker away from the third-party injector', () => {
-    const row = buildMenuItem(specs[0]!);
+    const row = buildDetailRow(specs[0]!);
     expect(row.dataset.lanhuExtItem).toBe('copy-design-url');
     expect(row.hasAttribute('data-lanhu-helper-copy-link')).toBe(false);
   });
 
   it('invokes onSelect on click', () => {
-    const row = buildMenuItem(specs[0]!);
+    const row = buildDetailRow(specs[0]!);
     row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(specs[0]!.onSelect).toHaveBeenCalledOnce();
   });
 
   it('invokes onSelect when the click lands on the inner title span', () => {
-    const row = buildMenuItem(specs[0]!);
+    const row = buildDetailRow(specs[0]!);
     document.body.append(row);
     row
       .querySelector(`.${TITLE_CLASS}`)!
@@ -121,7 +122,7 @@ describe('buildMenuItem', () => {
   });
 
   it('stops mouseup from bubbling so lanhu does not close the menu first', () => {
-    const row = buildMenuItem(specs[0]!);
+    const row = buildDetailRow(specs[0]!);
     document.body.append(row);
     const onBodyMouseUp = vi.fn();
     document.body.addEventListener('mouseup', onBodyMouseUp);
@@ -130,7 +131,7 @@ describe('buildMenuItem', () => {
   });
 
   it('stops contextmenu from re-triggering the host handler', () => {
-    const row = buildMenuItem(specs[0]!);
+    const row = buildDetailRow(specs[0]!);
     document.body.append(row);
     const onBodyContextMenu = vi.fn();
     document.body.addEventListener('contextmenu', onBodyContextMenu);
@@ -142,7 +143,7 @@ describe('buildMenuItem', () => {
 describe('injectInto', () => {
   it('appends every spec into .mu-menu-list', () => {
     const dialog = makeDialog();
-    expect(injectInto(dialog, specs)).toBe(true);
+    expect(injectInto(dialog, specs, detailMenuAdapter)).toBe(true);
     expect(itemCount(dialog)).toBe(HOST_ITEMS + specs.length);
     expect(dialog.querySelector('.mu-menu-list')?.children).toHaveLength(
       HOST_ITEMS + specs.length
@@ -151,7 +152,7 @@ describe('injectInto', () => {
 
   it('leaves the host rows untouched', () => {
     const dialog = makeDialog();
-    injectInto(dialog, specs);
+    injectInto(dialog, specs, detailMenuAdapter);
     const titles = [...dialog.querySelectorAll(`.${TITLE_CLASS}`)].map(
       e => e.textContent
     );
@@ -160,29 +161,29 @@ describe('injectInto', () => {
 
   it('is idempotent for a dialog it already touched', () => {
     const dialog = makeDialog();
-    injectInto(dialog, specs);
-    expect(injectInto(dialog, specs)).toBe(false);
+    injectInto(dialog, specs, detailMenuAdapter);
+    expect(injectInto(dialog, specs, detailMenuAdapter)).toBe(false);
     expect(itemCount(dialog)).toBe(HOST_ITEMS + specs.length);
   });
 
   it('returns false when the menu list is missing', () => {
     const dialog = document.createElement('div');
     dialog.className = 'detail_context_menu_dialog';
-    expect(injectInto(dialog, specs)).toBe(false);
+    expect(injectInto(dialog, specs, detailMenuAdapter)).toBe(false);
   });
 
   it('does not append to .mu-menu when .mu-menu-list is absent', () => {
     const dialog = document.createElement('div');
     dialog.className = 'detail_context_menu_dialog';
     dialog.innerHTML = '<div class="mu-menu"></div>';
-    expect(injectInto(dialog, specs)).toBe(false);
+    expect(injectInto(dialog, specs, detailMenuAdapter)).toBe(false);
     expect(itemCount(dialog)).toBe(0);
   });
 });
 
 describe('installMenuInjector', () => {
   it('injects into dialogs added after install', async () => {
-    const dispose = installMenuInjector(document.body, specs);
+    const dispose = installMenuInjector(document.body, specs, [detailMenuAdapter]);
     const dialog = makeDialog();
     document.body.append(dialog);
 
@@ -193,7 +194,7 @@ describe('installMenuInjector', () => {
   });
 
   it('injects into a dialog nested inside an added subtree', async () => {
-    const dispose = installMenuInjector(document.body, specs);
+    const dispose = installMenuInjector(document.body, specs, [detailMenuAdapter]);
     const wrapper = document.createElement('div');
     wrapper.append(makeDialog());
     document.body.append(wrapper);
@@ -205,7 +206,7 @@ describe('installMenuInjector', () => {
   });
 
   it('re-injects when lanhu rebuilds the menu on the next right-click', async () => {
-    const dispose = installMenuInjector(document.body, specs);
+    const dispose = installMenuInjector(document.body, specs, [detailMenuAdapter]);
     const first = makeDialog();
     document.body.append(first);
     await vi.waitFor(() =>
@@ -222,12 +223,34 @@ describe('installMenuInjector', () => {
   });
 
   it('stops injecting after dispose', async () => {
-    const dispose = installMenuInjector(document.body, specs);
+    const dispose = installMenuInjector(document.body, specs, [detailMenuAdapter]);
     dispose();
     const dialog = makeDialog();
     document.body.append(dialog);
 
     await new Promise(resolve => setTimeout(resolve, 30));
     expect(itemCount(dialog)).toBe(HOST_ITEMS);
+  });
+
+  it('re-injects when the host re-renders the list and drops our rows', async () => {
+    const dispose = installMenuInjector(document.body, specs, [
+      detailMenuAdapter
+    ]);
+    const dialog = makeDialog();
+    document.body.append(dialog);
+    await vi.waitFor(() =>
+      expect(itemCount(dialog)).toBe(HOST_ITEMS + specs.length)
+    );
+
+    // A stale dataset flag on the dialog would make this unrecoverable.
+    for (const row of dialog.querySelectorAll('[data-lanhu-ext-item]')) {
+      row.remove();
+    }
+    dialog.querySelector('.mu-menu-list')!.append(document.createElement('div'));
+
+    await vi.waitFor(() =>
+      expect(itemCount(dialog)).toBe(HOST_ITEMS + specs.length)
+    );
+    dispose();
   });
 });
