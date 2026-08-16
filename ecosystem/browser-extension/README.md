@@ -1,20 +1,29 @@
 # @lanhu-context/browser-extension
+
 <img src="public/icons/icon48.png" width="48" height="48" alt="lanhu-context helper icon">
 
-
-蓝湖浏览器扩展：在设计稿详情页（detailDetach）与项目画布页（stage）蓝湖自绘的右键菜单里注入三个菜单项，把登录态与设计稿定位信息一键喂给 `lanhu-context` CLI。私有包，不发布 npm。
+蓝湖浏览器扩展：在设计稿详情页（detailDetach）与项目画布页（stage）蓝湖自绘的右键菜单里注入三个菜单项，把登录态与设计稿定位信息一键喂给 `lanhu-context` CLI。私有包，不发布 npm；随仓库 changesets 发版，产物（crx/zip）见 GitHub Releases。
 
 ## 安装
+
+### 方式一：从 GitHub Release 下载（无需构建）
+
+到 [Releases](https://github.com/DaYePython/lanhu-context/releases) 页找最新的 `@lanhu-context/browser-extension@x.y.z`，附件有两个：
+
+- **`lanhu-context-helper-<version>.zip`（推荐）**：解压后按下面的步骤加载解压目录即可
+- `lanhu-context-helper-<version>.crx`：签名安装包。Chrome 75+ 对非商店 crx 有 `CRX_REQUIRED_PROOF_MISSING` 限制，拖进 `chrome://extensions` 通常会被拒；它面向企业策略分发（force install）与接受本地 crx 的 Chromium 系浏览器
+
+### 方式二：从源码构建
 
 ```bash
 pnpm --filter @lanhu-context/browser-extension build
 ```
 
-然后在 Chrome 中：
+两种方式最后都在 Chrome 中：
 
 1. 打开 `chrome://extensions`
 2. 开启右上角「开发者模式」
-3. 点「加载已解压的扩展程序」，选择本目录下的 `dist/`
+3. 点「加载已解压的扩展程序」，选择解压出的目录（方式一）或本目录下的 `dist/`（方式二）
 
 最低 Chrome 版本：**114**。
 

@@ -1,0 +1,117 @@
+name: Release Browser Extension
+
+# Packs the browser extension into signed .crx (+ .zip) and attaches both to
+# the GitHub release of the current @lanhu-context/browser-extension tag.
+#
+# Invoked as a reusable workflow from release.yml after every changesets run:
+# a tag pushed with GITHUB_TOKEN cannot trigger `on: push: tags` workflows
+# (GitHub recursion guard), so `workflow_call` is the only reliable hook.
+# workflow_dispatch exists for manual backfill of the current version.
+
+on:
+  workflow_call: {}
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Re-upload assets even if the release already has a .crx'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  crx:
+    name: Pack and upload crx
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      # Cheap gate first: the caller invokes this workflow on every push to
+      # main, so bail out fast unless the current extension version has been
+      # tagged by changesets and its release still lacks a .crx asset.
+      - name: Decide whether this version needs packing
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE: ${{ inputs.force == true }}
+        run: |
+          set -euo pipefail
+          VERSION=$(jq -r .version ecosystem/browser-extension/package.json)
+          TAG="@lanhu-context/browser-extension@${VERSION}"
+          {
+            echo "version=${VERSION}"
+            echo "tag=${TAG}"
+          } >> "$GITHUB_OUTPUT"
+
+          if ! git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null; then
+            echo "tag ${TAG} does not exist; nothing to release"
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CRX_COUNT=$(gh release view "${TAG}" --json assets \
+            --jq '[.assets[].name | select(endswith(".crx"))] | length' 2>/dev/null || echo 0)
+          if [ "${CRX_COUNT}" != "0" ] && [ "${FORCE}" != "true" ]; then
+            echo "release ${TAG} already has a .crx asset; skipping"
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "needed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm
+        if: steps.check.outputs.needed == 'true'
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        if: steps.check.outputs.needed == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.check.outputs.needed == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build extension (with workspace deps)
+        if: steps.check.outputs.needed == 'true'
+        run: pnpm --filter "@lanhu-context/browser-extension..." run build
+
+      - name: Write signing key
+        if: steps.check.outputs.needed == 'true'
+        env:
+          CRX_KEY: ${{ secrets.LANHU_EXT_CRX_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRX_KEY}" ]; then
+            echo "::error::secret LANHU_EXT_CRX_KEY is not configured; cannot sign the crx"
+            exit 1
+          fi
+          KEY_FILE="${RUNNER_TEMP}/crx-key.pem"
+          (umask 177 && printf '%s\n' "${CRX_KEY}" > "${KEY_FILE}")
+          echo "LANHU_EXT_CRX_KEY_FILE=${KEY_FILE}" >> "$GITHUB_ENV"
+
+      - name: Pack crx
+        if: steps.check.outputs.needed == 'true'
+        run: pnpm --filter @lanhu-context/browser-extension pack:crx
+
+      - name: Upload assets to the GitHub release
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # changesets/action normally creates the release for the tag; keep a
+          # fallback for runs where it did not (e.g. manual backfill).
+          if ! gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release create "${TAG}" --verify-tag --title "${TAG}" \
+              --notes "变更明细见 [ecosystem/browser-extension/CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/ecosystem/browser-extension/CHANGELOG.md)。"
+          fi
+          gh release upload "${TAG}" \
+            ecosystem/browser-extension/artifacts/*.crx \
+            ecosystem/browser-extension/artifacts/*.zip \
+            --clobber

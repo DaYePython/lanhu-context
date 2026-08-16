@@ -8,6 +8,11 @@ coverage/
 !.env.local.example
 .claude/settings.local.json
 
+# browser-extension signing key and packed artifacts (the key equals identity
+# of the published extension — never commit it)
+*.pem
+*.crx
+
 # machine-local Claude Code instructions (not team-shared)
 CLAUDE.local.md
 .claude/agents/lanhu-bundle-reader.md

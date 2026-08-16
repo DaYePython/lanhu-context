@@ -1,6 +1,6 @@
 # CLAUDE.md — @lanhu-context/browser-extension
 
-蓝湖设计稿详情页（detailDetach）与项目画布页（stage）的 Chrome MV3 扩展：往两页各自**自绘**的右键菜单注入「复制选中设计稿链接 / 复制 cookies / 发送 cookies 到本机」三项，配合 CLI 的 `lanhu auth listen` 使用。私有包（`private: true`），不发布 npm，不参与 changesets 发版。
+蓝湖设计稿详情页（detailDetach）与项目画布页（stage）的 Chrome MV3 扩展：往两页各自**自绘**的右键菜单注入「复制选中设计稿链接 / 复制 cookies / 发送 cookies 到本机」三项，配合 CLI 的 `lanhu auth listen` 使用。私有包（`private: true`），不发布 npm，但**参与 changesets 发版**（`.changeset/config.json` 的 `privatePackages` 开启 version+tag）：发版打 tag `@lanhu-context/browser-extension@x.y.z`，CI（`.github/workflows/release-extension.yml`，由 release.yml 以 `workflow_call` 调用）把签名 crx + zip 附到该 tag 的 GitHub Release。
 
 ## 权威文档
 
@@ -18,7 +18,8 @@
 ## 常用命令
 
 ```bash
-pnpm --filter @lanhu-context/browser-extension build      # 双入口构建 → dist/（SW=ES、content=IIFE，scripts/build.ts 驱动）
+pnpm --filter @lanhu-context/browser-extension build      # 双入口构建 → dist/（SW=ES、content=IIFE，scripts/build.ts 驱动；版本号从 package.json 注入 dist/manifest.json）
+pnpm --filter @lanhu-context/browser-extension pack:crx   # dist/ → artifacts/ 下 crx+zip（key 缺省 key.pem，不存在时自动生成；需 Node 22+）
 pnpm --filter @lanhu-context/browser-extension typecheck
 pnpm vitest run ecosystem/browser-extension               # 测试由根 vitest.config.ts 收录；DOM 测试用 @vitest-environment jsdom
 ```
@@ -39,4 +40,5 @@ pnpm vitest run ecosystem/browser-extension               # 测试由根 vitest.
 - **不自带 CSS**：注入项复用宿主已有 class 继承样式；toast 等临时元素用内联样式。
 - **端口一致性**：`src/shared/constants.ts` 的 `DEFAULT_BRIDGE_PORT = 7623` 必须与 CLI `lanhu auth listen --port` 默认值一致，改一处必改另一处（`packages/cli/src/commands/auth.ts`）。
 - **token 安全**（继承根 CLAUDE.md）：Cookie 等同账号凭据。测试与文档一律用 `sid=FAKE` 类占位符，绝不出现真实 Cookie；日志/toast 不回显 token 内容。
+- **crx 签名 key 同凭据级**：key 决定扩展 ID，换 key 等于换扩展。本地 `key.pem` 与一切 `*.pem`/`*.crx` 已被根 .gitignore 拦截，绝不入库；CI 从 repo secret `LANHU_EXT_CRX_KEY` 读取（缺失时 workflow 明确报错，不静默跳过）。manifest 版本号唯一事实源是 package.json（changesets 管理），`public/manifest.json` 里的 version 只是占位，构建时被 `scripts/build.ts` 覆写。
 - **manifest 权限最小化**：`cookies` + `clipboardWrite`，`host_permissions` 仅 `*.lanhuapp.com` 与 `127.0.0.1`；新增权限需先在 README「权限说明」给出理由。

@@ -51,3 +51,13 @@ jobs:
           push-git-tags: true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # The extension is private (never published to npm); its release artifact is
+  # a signed crx attached to the GitHub release of its changesets tag. The
+  # called workflow checks by itself whether the current version needs packing,
+  # so no gating on changesets outputs is required here.
+  browser-extension:
+    name: Release Browser Extension
+    needs: release
+    uses: ./.github/workflows/release-extension.yml
+    secrets: inherit
