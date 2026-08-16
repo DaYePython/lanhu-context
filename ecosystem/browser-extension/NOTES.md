@@ -85,11 +85,60 @@
 
 它同时证明了一件事：**往 `.mu-menu-list` 追加节点是可行的**，宿主不会把外来节点清掉。
 
-## 4. URL 跟随设计稿切换
+## 4. URL 跟随设计稿切换 —— ⚠ 但 `tid` 会丢失
 
-**结论：跟随。** 切换设计稿后 `location.hash` 中的 `image_id` 随之改变。
+**结论：`image_id` 跟随切换，但 `tid` 在切换后从 URL 中消失。**
 
-因此「复制选中设计稿链接」只需从 `location.hash` 解析 `tid` / `pid` / `image_id`，无需读取页面任何 JS 全局变量，content script 也不需要 `world: "MAIN"`。
+`design-detail/components/MarkLeft.vue:609-617` 在切换设计稿时整段替换 query：
+
+```js
+changeUrlQuery: function (t, e) {
+  if (t.id !== this.$route.query.image_id) {
+    var n = e || { pid: this.projectId, project_id: this.projectId, image_id: t.id };
+    // …$router.push({ name: "detailDetach", query: n })
+  }
+}
+```
+
+新 query 只有 `{ pid, project_id, image_id }`。所以：
+
+| 时机 | URL 是否含 `tid` |
+| --- | --- |
+| 从项目列表进入详情页 | ✅ 有 |
+| 在页内切换到另一张设计稿 | ❌ 没有 |
+
+只读 URL 的解析器会在最常见的路径上报「未识别到设计稿参数」。
+
+### 蓝湖自己的 fallback 链
+
+`getTeamId()` 在多处重复出现（`project-entry/api/msg-center-server.js:407`、`editor/components/ItemProjectEditor.vue:2047`、`item/mixins/notify-all.js:64` 等）：
+
+```js
+return this.$route.query.team_id || this.$route.query.tid || this.team_id || localStorage.team_id;
+```
+
+`project_id` 同样有兜底（`design-detail/api/project-sign-url.js:163`）：`project_id: i || localStorage.pid`。
+
+### 取值表
+
+| 字段 | URL 键（按优先级） | localStorage 兜底 |
+| --- | --- | --- |
+| teamId | `tid` → `team_id` | `team_id`（全仓 119 次引用） |
+| projectId | `pid` → `project_id` | `pid`（55 次） |
+| imageId | `image_id` → `docId` | **无（刻意不做）** |
+
+`image_id` 不兜底：`changeUrlQuery` 保证它始终在 URL 里，而过期的存储值会静默指向错误的设计稿。
+
+### ⚠ 存储值可能是垃圾
+
+- `common/utils/tip-team.js:72` → `localStorage.team_id = "undefined"`（字面量字符串）
+- `item/api/account-project.js:589` → `localStorage.pid = ""`
+
+取值时必须把 `''` / `'undefined'` / `'null'` 一律视为缺失，否则会把字符串 `"undefined"` 当成合法 team id 拼进 URL。
+
+### 对架构的影响
+
+content script 运行在 ISOLATED world 时与页面**同源**，可直接读同一份 `localStorage`。因此这条修正**不需要**引入 `world: "MAIN"`。
 
 ## 5. 与计划中「逆向结论摘要」的差异
 
@@ -99,4 +148,5 @@
 | 菜单项结构 | `.mu-menu-item` 直接包 `span.menu-item-title` | 5 层嵌套，中间有 `.mu-menu-item-title` | 以实测为准，`buildMenuItem` 按真实层级构造 |
 | 徽标位置 | 未预见 | `.key-icon > .hotkey`，可选 | 新增 `MenuItemSpec.badge` 可选字段 |
 | 原生右键菜单被屏蔽 | 是 | 是 | 一致 |
-| URL 跟随切换 | 假定跟随 | 跟随 | 一致 |
+| URL 跟随切换 | 假定 `tid` 恒在 | `image_id` 跟随，**`tid` 切换后丢失** | 解析改为 URL + localStorage 两级 fallback，复刻蓝湖 `getTeamId()` |
+| 存储值合法性 | 未预见 | 可能是 `"undefined"` / `""` | 取值统一过滤占位串 |

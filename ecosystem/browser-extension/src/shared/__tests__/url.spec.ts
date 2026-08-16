@@ -1,23 +1,87 @@
 import { parseLanhuUrl } from '@lanhu-context/core';
 import { describe, expect, it } from 'vitest';
-import { buildDesignUrl, parseDesignRefFromHash } from '../url';
+import {
+  buildDesignUrl,
+  parseHashParams,
+  resolveDesignRef,
+  type StorageLike
+} from '../url';
 
-const HREF =
+const FULL =
   'https://lanhuapp.com/web/#/item/project/detailDetach?tid=T1&pid=P1&image_id=I1';
 
-describe('parseDesignRefFromHash', () => {
-  it('reads tid/pid/image_id from the hash fragment', () => {
-    expect(parseDesignRefFromHash(HREF)).toEqual({
+/** URL shape after lanhu's changeUrlQuery drops tid on a design switch. */
+const SWITCHED =
+  'https://lanhuapp.com/web/#/item/project/detailDetach?pid=P1&project_id=P1&image_id=I2';
+
+function store(map: Record<string, string>): StorageLike {
+  return { getItem: key => map[key] ?? null };
+}
+
+const EMPTY = store({});
+
+describe('parseHashParams', () => {
+  it('reads the query that follows the hash', () => {
+    expect(parseHashParams(FULL)?.get('tid')).toBe('T1');
+  });
+
+  it('ignores the search string before the hash', () => {
+    const href =
+      'https://lanhuapp.com/web/?from=share#/item/project/detailDetach?tid=T3';
+    expect(parseHashParams(href)?.get('tid')).toBe('T3');
+  });
+
+  it('returns null when there is no hash query', () => {
+    expect(parseHashParams('https://lanhuapp.com/web/#/item')).toBeNull();
+    expect(parseHashParams('https://lanhuapp.com/web/')).toBeNull();
+  });
+});
+
+describe('resolveDesignRef', () => {
+  it('reads everything from the url when tid is present', () => {
+    expect(resolveDesignRef(FULL, EMPTY)).toEqual({
       teamId: 'T1',
       projectId: 'P1',
       imageId: 'I1'
     });
   });
 
+  it('falls back to localStorage team_id after a design switch drops tid', () => {
+    expect(resolveDesignRef(SWITCHED, store({ team_id: 'T9' }))).toEqual({
+      teamId: 'T9',
+      projectId: 'P1',
+      imageId: 'I2'
+    });
+  });
+
+  it('falls back to localStorage pid when the url carries neither pid alias', () => {
+    const href =
+      'https://lanhuapp.com/web/#/item/project/detailDetach?image_id=I1';
+    expect(resolveDesignRef(href, store({ team_id: 'T9', pid: 'P9' }))).toEqual(
+      {
+        teamId: 'T9',
+        projectId: 'P9',
+        imageId: 'I1'
+      }
+    );
+  });
+
+  it('prefers the url over storage for teamId', () => {
+    expect(resolveDesignRef(FULL, store({ team_id: 'STALE' }))?.teamId).toBe(
+      'T1'
+    );
+  });
+
+  it('accepts the team_id url alias as well as tid', () => {
+    const href =
+      'https://lanhuapp.com/web/#/item/project/detailDetach?team_id=T5&pid=P1&image_id=I1';
+    expect(resolveDesignRef(href, EMPTY)?.teamId).toBe('T5');
+  });
+
   it('accepts the project_id and docId aliases', () => {
     const href =
       'https://lanhuapp.com/web/#/item/project/detailDetach?tid=T2&project_id=P2&docId=D2';
-    expect(parseDesignRefFromHash(href)).toEqual({
+    expect(resolveDesignRef(href, EMPTY)).toEqual({
       teamId: 'T2',
       projectId: 'P2',
       imageId: 'D2'
@@ -27,37 +91,56 @@ describe('parseDesignRefFromHash', () => {
   it('prefers pid over project_id when lanhu sends both', () => {
     const href =
       'https://lanhuapp.com/web/#/item/project/detailDetach?tid=T&project_id=OLD&pid=NEW&image_id=I';
-    expect(parseDesignRefFromHash(href)?.projectId).toBe('NEW');
+    expect(resolveDesignRef(href, EMPTY)?.projectId).toBe('NEW');
   });
 
-  it('ignores the search string before the hash', () => {
+  it('treats the literal string "undefined" in storage as absent', () => {
+    // common/utils/tip-team.js writes localStorage.team_id = "undefined".
+    expect(
+      resolveDesignRef(SWITCHED, store({ team_id: 'undefined' }))
+    ).toBeNull();
+  });
+
+  it('treats an empty stored value as absent', () => {
+    // item/api/account-project.js writes localStorage.pid = "".
     const href =
-      'https://lanhuapp.com/web/?from=share#/item/project/detailDetach?tid=T3&pid=P3&image_id=I3';
-    expect(parseDesignRefFromHash(href)?.teamId).toBe('T3');
+      'https://lanhuapp.com/web/#/item/project/detailDetach?image_id=I1';
+    expect(
+      resolveDesignRef(href, store({ team_id: 'T9', pid: '' }))
+    ).toBeNull();
+  });
+
+  it('never falls back to storage for imageId', () => {
+    // A stale stored image_id would silently copy the wrong design.
+    const href = 'https://lanhuapp.com/web/#/item/project/detailDetach?pid=P1';
+    expect(
+      resolveDesignRef(href, store({ team_id: 'T9', image_id: 'STALE' }))
+    ).toBeNull();
   });
 
   it('ignores extra params lanhu appends', () => {
-    const href = `${HREF}&comment_id=C1&version_id=V1`;
-    expect(parseDesignRefFromHash(href)).toEqual({
+    const href = `${FULL}&comment_id=C1&version_id=V1`;
+    expect(resolveDesignRef(href, EMPTY)).toEqual({
       teamId: 'T1',
       projectId: 'P1',
       imageId: 'I1'
     });
   });
 
-  it('returns null when a required param is missing', () => {
+  it('returns null when there is no hash query at all', () => {
     expect(
-      parseDesignRefFromHash(
-        'https://lanhuapp.com/web/#/item/project/detailDetach?tid=T1&pid=P1'
-      )
+      resolveDesignRef('https://lanhuapp.com/web/', store({ team_id: 'T9' }))
     ).toBeNull();
   });
 
-  it('returns null when there is no hash query at all', () => {
-    expect(
-      parseDesignRefFromHash('https://lanhuapp.com/web/#/item')
-    ).toBeNull();
-    expect(parseDesignRefFromHash('https://lanhuapp.com/web/')).toBeNull();
+  it('survives a storage accessor that throws', () => {
+    const hostile: StorageLike = {
+      getItem: () => {
+        throw new Error('blocked');
+      }
+    };
+    expect(resolveDesignRef(FULL, hostile)?.teamId).toBe('T1');
+    expect(resolveDesignRef(SWITCHED, hostile)).toBeNull();
   });
 });
 
@@ -77,11 +160,12 @@ describe('buildDesignUrl', () => {
     expect(parsed.docId).toBe('I1');
   });
 
-  it('round-trips a url parsed straight off the address bar', () => {
-    const ref2 = parseDesignRefFromHash(`${HREF}&comment_id=C1`);
-    expect(ref2).not.toBeNull();
-    const parsed = parseLanhuUrl(buildDesignUrl(ref2!));
-    expect(parsed.docId).toBe('I1');
+  it('re-adds tid that the live url had lost', () => {
+    // The whole point: a switched-to design still yields a CLI-usable link.
+    const resolved = resolveDesignRef(SWITCHED, store({ team_id: 'T9' }));
+    const parsed = parseLanhuUrl(buildDesignUrl(resolved!));
+    expect(parsed.teamId).toBe('T9');
+    expect(parsed.docId).toBe('I2');
   });
 
   it('percent-encodes ids that contain url-unsafe characters', () => {

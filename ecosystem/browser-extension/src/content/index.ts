@@ -1,5 +1,5 @@
 import type { BackgroundMessage, BackgroundReply } from '../shared/protocol';
-import { buildDesignUrl, parseDesignRefFromHash } from '../shared/url';
+import { buildDesignUrl, resolveDesignRef } from '../shared/url';
 import { copyText } from './clipboard';
 import { installMenuInjector, type MenuItemSpec } from './menu';
 
@@ -28,9 +28,11 @@ function ask(message: BackgroundMessage): Promise<BackgroundReply> {
 }
 
 async function copyDesignUrl(): Promise<void> {
-  const ref = parseDesignRefFromHash(location.href);
+  // Content scripts share the page origin, so this is the same localStorage
+  // lanhu itself falls back to when the url has no tid.
+  const ref = resolveDesignRef(location.href, localStorage);
   if (!ref) {
-    toast('未识别到设计稿参数（需要 tid / pid / image_id）');
+    toast('未识别到设计稿参数（tid / pid / image_id 均无法获取）');
     return;
   }
   const ok = await copyText(buildDesignUrl(ref));
