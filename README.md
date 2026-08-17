@@ -12,7 +12,7 @@
 - **Machine-readable by default** — `--json` gives a uniform envelope (`ok` / `data` / `error` / `warnings` / `meta`) plus classified exit codes; errors carry `{code, severity, message, hint}`.
 - **Graded severity** — optional stages (tokens, preview) failing degrade with warnings instead of killing the run (`fatal` / `degraded` / `notice`).
 - **Idempotent outputs** — re-runs compare file content and report `written` / `skipped` / `overwritten`; `--force` to override.
-- **Credential tooling** — `lanhu auth set/test/listen` and `lanhu doctor` for token (browser Cookie) management and diagnosis; tokens are never echoed. A companion [browser extension](ecosystem/browser-extension) copies the design URL / cookies from Lanhu's own context menu and can push them straight to `lanhu auth listen`.
+- **Credential tooling** — `lanhu auth set/test/listen` and `lanhu doctor` for token (browser Cookie) management and diagnosis; tokens are never echoed. A companion [browser extension](ecosystem/browser-extension) and [userscript](ecosystem/lanhu-monkey) copy the design URL / cookies from Lanhu's own context menu and can push them straight to `lanhu auth listen`.
 - **MCP compatibility** — the standalone `lanhu-context-mcp` bin (npm `@lanhu-context/mcp`) serves the upstream `lanhu-context-mcp` `get_design_context` tool contract over stdio or streamable HTTP.
 - **Agent skills included** — ready-made skills under [skills/](skills/) teach Claude Code (and other agents) how to drive the CLI and the MCP server.
 
@@ -57,7 +57,12 @@ lanhu auth set          # reads token from stdin, keeps it off the command line
 lanhu auth test "$URL"  # exit 0 = token works
 ```
 
-Prefer one-click login? Install the companion [browser extension](ecosystem/browser-extension) (prebuilt zip on the [GitHub Releases](https://github.com/DaYePython/lanhu-context/releases) page, or build from source — see [ecosystem/browser-extension/README.md](ecosystem/browser-extension/README.md)), then start the one-shot receiver — via npx this works even before the CLI is installed:
+Prefer one-click login? Install either companion helper:
+
+- **Browser extension** (best Cookie fidelity — HttpOnly included with zero config): prebuilt zip on the [GitHub Releases](https://github.com/DaYePython/lanhu-context/releases) page, or build from source — see [ecosystem/browser-extension/README.md](ecosystem/browser-extension/README.md);
+- **Userscript** (when installing an extension isn't an option): with Tampermonkey (or another script manager) in place, [one-click install "蓝湖 lanhu-context 助手" from GreasyFork](https://update.greasyfork.org/scripts/591618/%E8%93%9D%E6%B9%96%20lanhu-context%20%E5%8A%A9%E6%89%8B.user.js) (auto-updates on every release) — see [ecosystem/lanhu-monkey/README.md](ecosystem/lanhu-monkey/README.md).
+
+Then start the one-shot receiver — via npx this works even before the CLI is installed:
 
 ```bash
 lanhu auth listen
@@ -65,7 +70,7 @@ lanhu auth listen
 npx -y -p @lanhu-context/cli lanhu auth listen
 ```
 
-Right-click "发送 cookies 到本机" (send cookies to this machine) on any Lanhu design page before the timeout (120 s by default) — the receiver only accepts requests originating from the extension (`chrome-extension://` origin), listens on 127.0.0.1 once, and stores the credential with mode 0600.
+Right-click "发送 cookies 到本机" (send cookies to this machine) on any Lanhu design page before the timeout (120 s by default) — the receiver only accepts requests originating from the extension (`chrome-extension://` origin) or the userscript (`x-lanhu-bridge` marker header), listens on 127.0.0.1 once, and stores the credential with mode 0600.
 
 To teach your agent how to drive the CLI, install the bundled lanhu-context-cli skill with [find-skills](https://github.com/vercel-labs/skills) (project-scoped by default; add `-g` for a global install and `-a <agent>` to pick target agents — agents that don't support global installs are skipped with a ✗):
 

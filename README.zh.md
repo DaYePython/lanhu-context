@@ -12,7 +12,7 @@
 - **默认机器可读** —— `--json` 输出统一 envelope（`ok` / `data` / `error` / `warnings` / `meta`）+ 分类退出码；错误结构化为 `{code, severity, message, hint}`。
 - **分级严重性** —— tokens / preview 等附属阶段失败只降级为 warning，不拖垮核心产物（`fatal` / `degraded` / `notice` 三级）。
 - **幂等输出** —— 重跑会比对文件内容并报告 `written` / `skipped` / `overwritten`；`--force` 强制重写。
-- **凭据工具链** —— `lanhu auth set/test/listen` 与 `lanhu doctor` 管理和诊断 token（整段浏览器 Cookie）；token 绝不回显。配套的[浏览器扩展](ecosystem/browser-extension)可在蓝湖右键菜单里一键复制设计稿链接/Cookie，或把 Cookie 直接推送给 `lanhu auth listen`。
+- **凭据工具链** —— `lanhu auth set/test/listen` 与 `lanhu doctor` 管理和诊断 token（整段浏览器 Cookie）；token 绝不回显。配套的[浏览器扩展](ecosystem/browser-extension)与[油猴脚本](ecosystem/lanhu-monkey)可在蓝湖右键菜单里一键复制设计稿链接/Cookie，或把 Cookie 直接推送给 `lanhu auth listen`。
 - **MCP 兼容** —— 独立 bin `lanhu-context-mcp`（npm 包 `@lanhu-context/mcp`）以 stdio 或 streamable HTTP 提供与上游完全一致的 `get_design_context` 工具契约。
 - **自带 Agent skills** —— [skills/](skills/) 内置两个 skill，教 Claude Code 等 Agent 正确驱动 CLI 与 MCP server。
 
@@ -57,7 +57,12 @@ lanhu auth set          # 从 stdin 读 token，不落命令行
 lanhu auth test "$URL"  # exit 0 = token 有效
 ```
 
-想一键登录？安装配套的[浏览器扩展](ecosystem/browser-extension)（[GitHub Releases](https://github.com/DaYePython/lanhu-context/releases) 有预构建 zip，也可自行构建，见 [ecosystem/browser-extension/README.md](ecosystem/browser-extension/README.md)），然后启动一次性接收端——未安装 CLI 也能直接用 npx 登录：
+想一键登录？配套的浏览器扩展与油猴脚本二选一装好：
+
+- **浏览器扩展**（Cookie 保真度最高，零配置含 HttpOnly）：[GitHub Releases](https://github.com/DaYePython/lanhu-context/releases) 有预构建 zip，也可自行构建，见 [ecosystem/browser-extension/README.md](ecosystem/browser-extension/README.md)；
+- **油猴脚本**（不便装扩展时用）：装好 Tampermonkey 等脚本管理器后，从 GreasyFork [一键安装「蓝湖 lanhu-context 助手」](https://update.greasyfork.org/scripts/591618/%E8%93%9D%E6%B9%96%20lanhu-context%20%E5%8A%A9%E6%89%8B.user.js)（发版自动推送更新），详见 [ecosystem/lanhu-monkey/README.md](ecosystem/lanhu-monkey/README.md)。
+
+再启动一次性接收端——未安装 CLI 也能直接用 npx 登录：
 
 ```bash
 lanhu auth listen
@@ -65,7 +70,7 @@ lanhu auth listen
 npx -y -p @lanhu-context/cli lanhu auth listen
 ```
 
-在超时前（默认 120s）于蓝湖设计稿页面右键点「发送 cookies 到本机」——接收端只接受扩展来源（`chrome-extension://` Origin）、仅监听 127.0.0.1、收到一次即退出，凭据以 0600 权限写入用户级配置。
+在超时前（默认 120s）于蓝湖设计稿页面右键点「发送 cookies 到本机」——接收端只接受浏览器扩展来源（`chrome-extension://` Origin）或油猴脚本标记（`x-lanhu-bridge` 请求头）、仅监听 127.0.0.1、收到一次即退出，凭据以 0600 权限写入用户级配置。
 
 要让 Agent 学会驱动 CLI，用 [find-skills](https://github.com/vercel-labs/skills) 把本仓的 lanhu-context-cli skill 装到你的 Agent（默认项目级，加 `-g` 全局安装；`-a <agent>` 指定目标 agent，部分 agent 不支持全局安装会标 ✗ 跳过）：
 

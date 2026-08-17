@@ -87,7 +87,7 @@ rg -o "src/assets/<语义化页面名>/[A-Za-z0-9._/-]+" -r '$0' <你写的代�
 | --- | --- | --- | --- |
 | 场景 2：只分析布局结构（不落盘） | 只看层级/布局，不需要图片资产 | `html --skip-slices` | L5–15 |
 | 场景 3：建立/核对设计系统 | 提取 design tokens 与项目 CSS 变量比对 | `tokens --format css` + `diff` | L17–28 |
-| 场景 4：登录 / 配置凭据 | 首次使用、exit 3/4 凭据类错误、Cookie 失效；未装 CLI 可 npx 免安装登录 | `auth listen`（扩展一键）/ `auth set`（手动粘贴）→ `auth test` | L30–62 |
+| 场景 4：登录 / 配置凭据 | 首次使用、exit 3/4 凭据类错误、Cookie 失效；未装 CLI 可 npx 免安装登录 | `auth listen`（扩展/油猴一键）/ `auth set`（手动粘贴）→ `auth test` | L30–62 |
 | 场景 5：排障（按退出码分派） | 任何非零退出码 | 按退出码查表执行动作 | L64–77 |
 
 执行边界与场景 1 里引用的"场景 N"即上表编号。行号以 scenarios.md 当前内容为准，修改该文件后必须同步更新本表。

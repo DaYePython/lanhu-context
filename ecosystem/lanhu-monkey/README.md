@@ -10,7 +10,7 @@
 
 ### 方式一：GreasyFork（推荐，自动更新）
 
-在 [GreasyFork](https://greasyfork.org/) 搜索「蓝湖 lanhu-context 助手」安装。GreasyFork 与本仓库 webhook 同步，发版后自动推送更新。
+装好脚本管理器后，打开脚本主页[「蓝湖 lanhu-context 助手」](https://greasyfork.org/scripts/591618)点「安装此脚本」，或直接点[一键安装链接](https://update.greasyfork.org/scripts/591618/%E8%93%9D%E6%B9%96%20lanhu-context%20%E5%8A%A9%E6%89%8B.user.js)由脚本管理器弹出安装确认。GreasyFork 与本仓库 webhook 同步，发版后自动推送更新。
 
 ### 方式二：GitHub raw 直装（自动更新）
 

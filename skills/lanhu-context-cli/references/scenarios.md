@@ -31,7 +31,7 @@ diff /tmp/lanhu-tokens.css src/styles/design-tokens.css
 
 输入：任意命令报 exit 3（`TOKEN_MISSING`）或 exit 4（`AUTH_EXPIRED`），或用户明说要登录/配置蓝湖凭据。登录不要求先装好 CLI——npx 形态照常可用。
 
-装了配套浏览器扩展（安装见 `ecosystem/browser-extension/README.md`，GitHub Releases 有预构建 zip）或油猴脚本（安装见 `ecosystem/lanhu-monkey/README.md`，Releases 有预构建 .user.js）→ 优先 `auth listen` 一键登录：
+装了配套浏览器扩展（安装见 `ecosystem/browser-extension/README.md`，GitHub Releases 有预构建 zip）或油猴脚本（装好 Tampermonkey 等脚本管理器后可从 [GreasyFork 一键安装](https://update.greasyfork.org/scripts/591618/%E8%93%9D%E6%B9%96%20lanhu-context%20%E5%8A%A9%E6%89%8B.user.js)；其他方式见 `ecosystem/lanhu-monkey/README.md`）→ 优先 `auth listen` 一键登录：
 
 ```bash
 lanhu auth listen --json
